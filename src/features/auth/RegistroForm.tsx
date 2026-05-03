@@ -236,7 +236,7 @@ export function RegistroForm() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-                  Crear cuenta →
+                  Crear cuenta
                 </Text>
               )}
             </TouchableOpacity>

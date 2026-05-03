@@ -216,7 +216,7 @@ export function LoginForm() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>
-                Iniciar sesión →
+                Iniciar sesión
               </Text>
             )}
           </TouchableOpacity>
