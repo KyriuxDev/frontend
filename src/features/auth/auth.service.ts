@@ -1,5 +1,5 @@
 import { api } from '@/src/lib/axios';
-import { AuthRespuesta } from './auth.tipos';
+import { AuthRespuesta } from './auth.types';
 import { LoginInput, RegistroInput } from './auth.schema';
 
 export async function login(data: LoginInput): Promise<AuthRespuesta> {

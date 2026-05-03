@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/src/store/auth.store';
-import { login, registro } from './auth.servicio';
+import { login, registro } from './auth.service';
 import { LoginInput, RegistroInput } from './auth.schema';
 
 export function useLogin() {
