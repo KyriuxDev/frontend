@@ -1,9 +1,7 @@
-import { View, Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { DetalleReporte } from '@/src/features/reportes/DetalleReporte';
 
 export default function DetalleReporteScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Detalle — próximamente</Text>
-    </View>
-  );
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <DetalleReporte id={Number(id)} />;
 }
