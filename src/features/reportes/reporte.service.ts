@@ -1,5 +1,5 @@
 import { api } from '@/src/lib/axios';
-import { ReportesRespuesta, ReporteDetalle, CrearReporteDto } from './reporte.types';
+import { ReportesRespuesta, ReporteDetalle, CrearReporteDto, CambiarEstadoDto } from './reporte.types';
 
 export async function getReportes(params?: {
   comunidadId?: number;
@@ -24,4 +24,13 @@ export async function crearReporte(dto: CrearReporteDto): Promise<ReporteDetalle
 
 export async function eliminarReporte(id: number): Promise<void> {
   await api.delete(`/reportes/${id}`);
+}
+
+
+export async function cambiarEstadoReporte(
+  id: number,
+  dto: CambiarEstadoDto,
+): Promise<ReporteDetalle> {
+  const { data } = await api.patch<ReporteDetalle>(`/reportes/${id}/estado`, dto);
+  return data;
 }

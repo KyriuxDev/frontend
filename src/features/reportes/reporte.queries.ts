@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getReportes, getReporteById, crearReporte, eliminarReporte } from './reporte.service';
-import { CrearReporteDto } from './reporte.types';
+import { getReportes, getReporteById, crearReporte, eliminarReporte, cambiarEstadoReporte } from './reporte.service';
+import { CrearReporteDto, CambiarEstadoDto } from './reporte.types';
 import { getVotos, votar, quitarVoto } from './voto.service';
 
 export function useReportes(params?: {
@@ -36,6 +36,18 @@ export function useEliminarReporte() {
   return useMutation({
     mutationFn: (id: number) => eliminarReporte(id),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['reportes'] }),
+  });
+}
+
+// ← NUEVO: para el panel admin
+export function useCambiarEstadoReporte(reporteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CambiarEstadoDto) => cambiarEstadoReporte(reporteId, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reportes'] });
+      qc.invalidateQueries({ queryKey: ['reportes', reporteId] });
+    },
   });
 }
 

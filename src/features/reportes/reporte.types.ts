@@ -44,6 +44,11 @@ export interface CrearReporteDto {
   sincronizado?: boolean;
 }
 
+export interface CambiarEstadoDto {
+  estado: EstadoReporte;
+  nota?:  string;
+}
+
 export interface PaginacionMeta {
   total:      number;
   page:       number;

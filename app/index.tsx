@@ -1,12 +1,20 @@
 import { Redirect } from 'expo-router';
+import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '@/src/store/auth.store';
 
 export default function Index() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isInitializing  = useAuthStore((s) => s.isInitializing);
 
-  if (isAuthenticated) {
-    return <Redirect href="/(main)/reportes" />;
+  // Mientras init() lee SecureStore / localStorage, no redirigimos nada
+  if (isInitializing) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9ff' }}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
   }
 
+  if (isAuthenticated) return <Redirect href="/(main)/reportes" />;
   return <Redirect href="/auth/login" />;
 }

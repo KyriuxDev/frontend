@@ -20,6 +20,7 @@ import Slider from '@react-native-community/slider';
 import { crearReporteSchema, CrearReporteInput } from './reporte.schema';
 import { useCrearReporte } from './reporte.queries';
 import { Categoria } from './reporte.types';
+import { useComunidades } from '@/src/features/comunidades/comunidad.queries';
 
 const CATEGORIAS: { label: string; value: Categoria; emoji: string }[] = [
   { label: 'INFRAESTRUCTURA', value: 'INFRAESTRUCTURA', emoji: '🏗️' },
@@ -35,6 +36,7 @@ export function FormularioReporte() {
   const [fotos,    setFotos]    = useState<string[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [loadingGPS, setLoadingGPS] = useState(false);
+  const { data: comunidades } = useComunidades();
 
   const {
     control,
@@ -112,15 +114,13 @@ export function FormularioReporte() {
 
   const onSubmit = (data: CrearReporteInput) => {
     crear(
-      { ...data, fuente: 'APP_MOVIL', fotos },
+      { ...data, fuente: 'APP_MOVIL' },   // sin fotos locales
       {
-        onSuccess: () => {
-          Alert.alert('✅ Reporte enviado', 'Tu reporte fue registrado correctamente.', [
-            { text: 'Ver reportes', onPress: () => router.replace('/(main)/reportes') },
-          ]);
-        },
-        onError: () => {
-          Alert.alert('Error', 'No se pudo enviar el reporte. Intenta de nuevo.');
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.error ??
+            JSON.stringify(err?.response?.data?.errors ?? 'Error desconocido');
+          Alert.alert('Error del servidor', msg);
         },
       },
     );
@@ -432,6 +432,40 @@ export function FormularioReporte() {
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#737686' }}>Galería</Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16,
+            borderWidth: 1, borderColor: '#c3c6d7', gap: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30' }}>
+              Comunidad
+            </Text>
+            <Controller
+              control={control}
+              name="comunidadId"
+              render={({ field: { onChange, value } }) => (
+                <View style={{ gap: 8, flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {(comunidades ?? []).map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      onPress={() => onChange(c.id)}
+                      style={{
+                        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                        borderWidth: value === c.id ? 2 : 1,
+                        borderColor: value === c.id ? '#004ac6' : '#c3c6d7',
+                        backgroundColor: value === c.id ? '#eff4ff' : '#fff',
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, color: value === c.id ? '#004ac6' : '#434655' }}>
+                        {c.nombre}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            />
+            {errors.comunidadId && (
+              <Text style={{ color: '#ba1a1a', fontSize: 12 }}>Selecciona una comunidad</Text>
+            )}
           </View>
 
           {/* Ubicación */}
