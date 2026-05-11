@@ -37,7 +37,7 @@ function colorEstadoPunto(estado: EstadoReporte, actual: EstadoReporte) {
   const orden: EstadoReporte[] = ['PENDIENTE', 'EN_PROCESO', 'RESUELTO'];
   const idxActual = orden.indexOf(actual);
   const idxEstado = orden.indexOf(estado);
-  if (idxEstado <= idxActual) return '#004ac6';
+  if (idxEstado <= idxActual) return '#1d4e32';
   return '#c3c6d7';
 }
 
@@ -69,7 +69,7 @@ export function DetalleReporte({ id }: Props) {
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9ff' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#1d4e32" />
       </View>
     );
   }
@@ -79,7 +79,7 @@ export function DetalleReporte({ id }: Props) {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9ff' }}>
         <Text style={{ fontSize: 16, color: '#737686' }}>No se pudo cargar el reporte</Text>
         <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#004ac6', fontWeight: '600' }}>← Volver</Text>
+          <Text style={{ color: '#1d4e32', fontWeight: '600' }}>← Volver</Text>
         </TouchableOpacity>
       </View>
     );
@@ -113,7 +113,7 @@ export function DetalleReporte({ id }: Props) {
             <TouchableOpacity onPress={() => router.back()}>
               <Text style={{ fontSize: 22, color: '#64748b' }}>←</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#2563eb' }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#1d4e32' }}>
               Detalle de Reporte
             </Text>
           </View>
@@ -211,7 +211,7 @@ export function DetalleReporte({ id }: Props) {
                 disabled={votando || quitandoVoto || !isAuthenticated}
                 style={{
                   flex: 1,
-                  backgroundColor: yaVote ? '#e5eeff' : '#004ac6',
+                  backgroundColor: yaVote ? '#e5eeff' : '#1d4e32',
                   paddingVertical: 12,
                   borderRadius: 12,
                   flexDirection: 'row',
@@ -221,7 +221,7 @@ export function DetalleReporte({ id }: Props) {
                 }}
               >
                 <Text style={{ fontSize: 16 }}>👍</Text>
-                <Text style={{ color: yaVote ? '#004ac6' : '#ffffff', fontWeight: '600', fontSize: 14 }}>
+                <Text style={{ color: yaVote ? '#1d4e32' : '#ffffff', fontWeight: '600', fontSize: 14 }}>
                   {yaVote ? 'Votado' : 'Votar'} ({totalVotos})
                 </Text>
               </TouchableOpacity>
@@ -260,7 +260,7 @@ export function DetalleReporte({ id }: Props) {
 
               <View
                 style={{
-                  backgroundColor: '#eff4ff',
+                  backgroundColor: '#f0fdf4',
                   borderRadius: 8,
                   padding: 12,
                   flexDirection: 'row',

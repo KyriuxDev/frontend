@@ -147,7 +147,7 @@ export function FormularioReporte() {
             borderBottomColor: '#e2e8f0',
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#2563eb', letterSpacing: -0.5 }}>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#1d4e32', letterSpacing: -0.5 }}>
             IRSU
           </Text>
           <Text style={{ fontSize: 20 }}>🔔</Text>
@@ -197,8 +197,8 @@ export function FormularioReporte() {
                           padding: 16,
                           borderRadius: 8,
                           borderWidth: activa ? 2 : 1,
-                          borderColor: activa ? '#004ac6' : '#c3c6d7',
-                          backgroundColor: activa ? '#eff4ff' : '#ffffff',
+                          borderColor: activa ? '#1d4e32' : '#c3c6d7',
+                          backgroundColor: activa ? '#f0fdf4' : '#ffffff',
                           alignItems: 'center',
                           gap: 4,
                         }}
@@ -208,7 +208,7 @@ export function FormularioReporte() {
                           style={{
                             fontSize: 11,
                             fontWeight: '700',
-                            color: activa ? '#004ac6' : '#434655',
+                            color: activa ? '#1d4e32' : '#434655',
                           }}
                         >
                           {cat.label}
@@ -302,9 +302,9 @@ export function FormularioReporte() {
                   step={1}
                   value={value}
                   onValueChange={(v) => onChange(Math.round(v))}
-                  minimumTrackTintColor="#004ac6"
+                  minimumTrackTintColor="#1d4e32"
                   maximumTrackTintColor="#c3c6d7"
-                  thumbTintColor="#004ac6"
+                  thumbTintColor="#1d4e32"
                 />
               )}
             />
@@ -451,11 +451,11 @@ export function FormularioReporte() {
                       style={{
                         paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
                         borderWidth: value === c.id ? 2 : 1,
-                        borderColor: value === c.id ? '#004ac6' : '#c3c6d7',
-                        backgroundColor: value === c.id ? '#eff4ff' : '#fff',
+                        borderColor: value === c.id ? '#1d4e32' : '#c3c6d7',
+                        backgroundColor: value === c.id ? '#f0fdf4' : '#fff',
                       }}
                     >
-                      <Text style={{ fontSize: 13, color: value === c.id ? '#004ac6' : '#434655' }}>
+                      <Text style={{ fontSize: 13, color: value === c.id ? '#1d4e32' : '#434655' }}>
                         {c.nombre}
                       </Text>
                     </TouchableOpacity>
@@ -502,11 +502,11 @@ export function FormularioReporte() {
               }}
             >
               {loadingGPS ? (
-                <ActivityIndicator color="#004ac6" />
+                <ActivityIndicator color="#1d4e32" />
               ) : location ? (
                 <View style={{ alignItems: 'center', gap: 4 }}>
                   <Text style={{ fontSize: 36 }}>📍</Text>
-                  <Text style={{ fontSize: 12, color: '#004ac6', fontWeight: '600' }}>
+                  <Text style={{ fontSize: 12, color: '#1d4e32', fontWeight: '600' }}>
                     {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
                   </Text>
                 </View>
@@ -529,13 +529,13 @@ export function FormularioReporte() {
             disabled={isPending || !location}
             style={{
               height: 56,
-              backgroundColor: isPending || !location ? '#b4c5ff' : '#004ac6',
+              backgroundColor: isPending || !location ? '#86efac' : '#1d4e32',
               borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'row',
               gap: 8,
-              shadowColor: '#004ac6',
+              shadowColor: '#1d4e32',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.25,
               shadowRadius: 8,
