@@ -22,11 +22,11 @@ import { useCrearReporte } from './reporte.queries';
 import { Categoria } from './reporte.types';
 import { useComunidades } from '@/src/features/comunidades/comunidad.queries';
 
-const CATEGORIAS: { label: string; value: Categoria; emoji: string }[] = [
-  { label: 'INFRAESTRUCTURA', value: 'INFRAESTRUCTURA', emoji: '🏗️' },
-  { label: 'VIALIDAD',        value: 'VIALIDAD',        emoji: '🚦' },
-  { label: 'BLOQUEOS',        value: 'BLOQUEOS',        emoji: '🚧' },
-  { label: 'SEGURIDAD',       value: 'SEGURIDAD',       emoji: '🔒' },
+const CATEGORIAS = [
+  { label: 'BACHES Y PAVIMENTO', value: 'INFRAESTRUCTURA', emoji: '🕳️' },
+  { label: 'SEÑALIZACIÓN',       value: 'VIALIDAD',        emoji: '🚦' },
+  { label: 'BLOQUEOS',           value: 'BLOQUEOS',        emoji: '🚧' },
+  { label: 'SEGURIDAD',          value: 'SEGURIDAD',       emoji: '🔒' },
 ];
 
 export function FormularioReporte() {

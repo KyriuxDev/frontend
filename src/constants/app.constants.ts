@@ -8,8 +8,8 @@ export const ROLES = {
 } as const;
 
 export const CATEGORIAS = {
-  INFRAESTRUCTURA: 'INFRAESTRUCTURA',
-  VIALIDAD:        'VIALIDAD',
+  'BACHES Y PAVIMENTO': 'BACHES Y PAVIMENTO',
+  SEÑALIZACIÓN:        'SEÑALIZACIÓN',
   BLOQUEOS:        'BLOQUEOS',
   SEGURIDAD:       'SEGURIDAD',
 } as const;
