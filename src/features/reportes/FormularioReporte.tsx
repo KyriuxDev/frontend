@@ -19,7 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import Slider from "@react-native-community/slider";
 import { crearReporteSchema, CrearReporteInput } from "./reporte.schema";
 import { useCrearReporte } from "./reporte.queries";
-import { Categoria } from "./reporte.types";
+import { Categoria, FotoFile } from "./reporte.types";
 import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
 import MapView, { Marker } from "react-native-maps";
@@ -35,7 +35,7 @@ export function FormularioReporte() {
 	const router = useRouter();
 	const { mutate: crear, isPending } = useCrearReporte();
 
-	const [fotos, setFotos] = useState<string[]>([]);
+	const [fotos, setFotos] = useState<FotoFile[]>([]);
 	const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
 		null,
 	);
@@ -91,40 +91,64 @@ export function FormularioReporte() {
 
 	async function seleccionarFotos() {
 		const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
 		if (status !== "granted") {
 			Alert.alert("Permiso denegado", "Se necesita acceso a la galería.");
 			return;
 		}
+
 		const result = await ImagePicker.launchImageLibraryAsync({
 			mediaTypes: ImagePicker.MediaTypeOptions.Images,
 			allowsMultipleSelection: true,
 			quality: 0.7,
 		});
+
 		if (!result.canceled) {
-			const uris = result.assets.map((a) => a.uri);
-			setFotos((prev) => [...prev, ...uris].slice(0, 5));
+			const nuevas = result.assets.map((a, index) => ({
+				uri: a.uri,
+				name: a.fileName ?? `foto_${Date.now()}_${index}.jpg`,
+				type: a.mimeType ?? "image/jpeg",
+			}));
+
+			setFotos((prev) => [...prev, ...nuevas].slice(0, 5));
 		}
 	}
 
 	async function tomarFoto() {
 		const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
 		if (status !== "granted") {
-			Alert.alert("Permiso denegado", "Se necesita acceso a la cámara.");
+			Alert.alert("Permiso denegado");
 			return;
 		}
-		const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+
+		const result = await ImagePicker.launchCameraAsync({
+			quality: 0.7,
+		});
+
 		if (!result.canceled) {
-			setFotos((prev) => [...prev, result.assets[0].uri].slice(0, 5));
+			const asset = result.assets[0];
+
+			setFotos((prev) =>
+				[
+					...prev,
+					{
+						uri: asset.uri,
+						name: asset.fileName ?? `foto_${Date.now()}.jpg`,
+						type: asset.mimeType ?? "image/jpeg",
+					},
+				].slice(0, 5),
+			);
 		}
 	}
 
 	function eliminarFoto(uri: string) {
-		setFotos((prev) => prev.filter((f) => f !== uri));
+		setFotos((prev) => prev.filter((f) => f.uri !== uri));
 	}
 
 	const onSubmit = (data: CrearReporteInput) => {
 		crear(
-			{ ...data, fuente: "APP_MOVIL" }, // sin fotos locales
+			{ ...data, fuente: "APP_MOVIL", fotos },
 			{
 				onError: (err: any) => {
 					const msg =
@@ -430,15 +454,16 @@ export function FormularioReporte() {
 								style={{ gap: 8 }}
 							>
 								<View style={{ flexDirection: "row", gap: 8 }}>
-									{fotos.map((uri) => (
-										<View key={uri} style={{ position: "relative" }}>
+									{fotos.map((foto) => (
+										<View key={foto.uri} style={{ position: "relative" }}>
 											<Image
-												source={{ uri }}
+												source={{ uri: foto.uri }}
 												style={{ width: 80, height: 80, borderRadius: 8 }}
 												resizeMode="cover"
 											/>
+
 											<TouchableOpacity
-												onPress={() => eliminarFoto(uri)}
+												onPress={() => eliminarFoto(foto.uri)}
 												style={{
 													position: "absolute",
 													top: -4,

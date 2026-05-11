@@ -31,6 +31,12 @@ export interface ReporteDetalle extends ReporteResumen {
   }[];
 }
 
+export type FotoFile = {
+	uri: string;
+	name: string;
+	type: string;
+};
+
 export interface CrearReporteDto {
   titulo:       string;
   descripcion?: string;
@@ -40,7 +46,7 @@ export interface CrearReporteDto {
   latitud:      number;
   longitud:     number;
   comunidadId:  number;
-  fotos?:       string[];
+  fotos?:       FotoFile[];
   sincronizado?: boolean;
 }
 
