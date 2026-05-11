@@ -22,7 +22,7 @@ import { useCrearReporte } from "./reporte.queries";
 import { Categoria, FotoFile } from "./reporte.types";
 import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
-import MapView, { Marker } from "react-native-maps";
+import { MapView, Marker } from "@/src/components/MapViewWrapper";
 
 const CATEGORIAS = [
 	{ label: "BACHES Y PAVIMENTO", value: "INFRAESTRUCTURA", emoji: "🕳️" },
