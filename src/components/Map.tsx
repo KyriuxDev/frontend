@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+	Modal,
+	View,
+	Text,
+	TouchableOpacity,
+	StyleSheet,
+} from "react-native";
 
-import MapView, { Marker, Region } from "react-native-maps";
+import MapView, { Region } from "react-native-maps";
 
 import * as Location from "expo-location";
 
 type Props = {
 	visible: boolean;
+
 	onClose: () => void;
 
 	onSelectLocation: (coords: { lat: number; lng: number }) => void;
@@ -30,13 +37,8 @@ export default function MapPicker({
 		longitude: initialLocation?.lng ?? -96.7266,
 
 		latitudeDelta: 0.01,
+
 		longitudeDelta: 0.01,
-	});
-
-	const [marker, setMarker] = useState({
-		latitude: initialLocation?.lat ?? 17.0732,
-
-		longitude: initialLocation?.lng ?? -96.7266,
 	});
 
 	useEffect(() => {
@@ -52,24 +54,22 @@ export default function MapPicker({
 			accuracy: Location.Accuracy.High,
 		});
 
-		const coords = {
-			latitude: loc.coords.latitude,
-			longitude: loc.coords.longitude,
-		};
-
 		setRegion({
-			...coords,
+			latitude: loc.coords.latitude,
+
+			longitude: loc.coords.longitude,
+
 			latitudeDelta: 0.01,
+
 			longitudeDelta: 0.01,
 		});
-
-		setMarker(coords);
 	}
 
 	function confirmarUbicacion() {
 		onSelectLocation({
-			lat: marker.latitude,
-			lng: marker.longitude,
+			lat: region.latitude,
+
+			lng: region.longitude,
 		});
 
 		onClose();
@@ -84,22 +84,26 @@ export default function MapPicker({
 					showsUserLocation
 					onRegionChangeComplete={(r) => {
 						setRegion(r);
-
-						setMarker({
-							latitude: r.latitude,
-							longitude: r.longitude,
-						});
 					}}
-				>
-					{/* <Marker
-						coordinate={marker}
-						draggable
-						onDragEnd={(e) => {
-							setMarker(e.nativeEvent.coordinate);
-						}}
-					/> */}
-				</MapView>
+				/>
 
+				{/* PIN FIJO */}
+				<View pointerEvents="none" style={styles.pinContainer}>
+					<Text style={styles.pin}>📍</Text>
+				</View>
+
+				{/* Coordenadas */}
+				<View style={styles.coordsBox}>
+					<Text style={styles.coordsText}>
+						Lat: {region.latitude.toFixed(6)}
+					</Text>
+
+					<Text style={styles.coordsText}>
+						Lng: {region.longitude.toFixed(6)}
+					</Text>
+				</View>
+
+				{/* Botones */}
 				<View style={styles.footer}>
 					<TouchableOpacity style={styles.cancelButton} onPress={onClose}>
 						<Text style={styles.buttonText}>Cancelar</Text>
@@ -118,6 +122,46 @@ export default function MapPicker({
 }
 
 const styles = StyleSheet.create({
+	pinContainer: {
+		position: "absolute",
+
+		top: "50%",
+
+		left: "50%",
+
+		marginLeft: -20,
+
+		marginTop: -40,
+	},
+
+	pin: {
+		fontSize: 40,
+	},
+
+	coordsBox: {
+		position: "absolute",
+
+		top: 60,
+
+		alignSelf: "center",
+
+		backgroundColor: "white",
+
+		paddingHorizontal: 14,
+
+		paddingVertical: 10,
+
+		borderRadius: 12,
+
+		elevation: 4,
+	},
+
+	coordsText: {
+		fontSize: 12,
+
+		fontWeight: "600",
+	},
+
 	footer: {
 		position: "absolute",
 

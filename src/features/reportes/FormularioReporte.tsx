@@ -22,6 +22,7 @@ import { useCrearReporte } from "./reporte.queries";
 import { Categoria } from "./reporte.types";
 import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
+import MapView, { Marker } from "react-native-maps";
 
 const CATEGORIAS = [
 	{ label: "BACHES Y PAVIMENTO", value: "INFRAESTRUCTURA", emoji: "🕳️" },
@@ -587,78 +588,157 @@ export function FormularioReporte() {
 							style={{
 								flexDirection: "row",
 								alignItems: "center",
-								gap: 6,
+								justifyContent: "space-between",
 								marginBottom: 12,
 							}}
 						>
-							<Text style={{ fontSize: 16 }}>📍</Text>
-							<Text
-								style={{ fontSize: 14, fontWeight: "600", color: "#0b1c30" }}
-							>
-								Confirmar Ubicación
-							</Text>
-						</View>
-
-						<TouchableOpacity
-							onPress={() => setMapVisible(true)}
-							style={{
-								alignItems: "center",
-								gap: 4,
-							}}
-						>
-							<Text style={{ fontSize: 36 }}>🗺️</Text>
-
-							<Text
+							<View
 								style={{
-									fontSize: 12,
-									color: "#737686",
+									flexDirection: "row",
+									alignItems: "center",
+									gap: 6,
 								}}
 							>
-								Seleccionar manualmente
-							</Text>
-						</TouchableOpacity>
+								<Text style={{ fontSize: 16 }}>📍</Text>
 
-						<View
+								<Text
+									style={{
+										fontSize: 14,
+										fontWeight: "600",
+										color: "#0b1c30",
+									}}
+								>
+									Confirmar Ubicación
+								</Text>
+							</View>
+
+							<TouchableOpacity
+								onPress={obtenerUbicacion}
+								style={{
+									backgroundColor: "#eff4ff",
+									paddingHorizontal: 10,
+									paddingVertical: 6,
+									borderRadius: 8,
+								}}
+							>
+								<Text
+									style={{
+										fontSize: 12,
+										fontWeight: "600",
+										color: "#004ac6",
+									}}
+								>
+									Mi ubicación
+								</Text>
+							</TouchableOpacity>
+						</View>
+
+						{/* Vista previa mapa */}
+						<TouchableOpacity
+							activeOpacity={0.9}
+							onPress={() => setMapVisible(true)}
 							style={{
-								height: 140,
-								backgroundColor: "#e5eeff",
-								borderRadius: 8,
-								alignItems: "center",
-								justifyContent: "center",
+								height: 220,
+								borderRadius: 12,
+								overflow: "hidden",
 								borderWidth: 1,
 								borderColor: "#c3c6d7",
+								backgroundColor: "#e5eeff",
 							}}
 						>
 							{loadingGPS ? (
-								<ActivityIndicator color="#004ac6" />
+								<View
+									style={{
+										flex: 1,
+										alignItems: "center",
+										justifyContent: "center",
+									}}
+								>
+									<ActivityIndicator color="#004ac6" />
+								</View>
 							) : location ? (
-								<View style={{ alignItems: "center", gap: 4 }}>
-									<Text style={{ fontSize: 36 }}>📍</Text>
+								<>
+									<MapView
+										style={{ flex: 1 }}
+										pointerEvents="none"
+										region={{
+											latitude: location.lat,
+											longitude: location.lng,
+											latitudeDelta: 0.005,
+											longitudeDelta: 0.005,
+										}}
+									>
+										<Marker
+											coordinate={{
+												latitude: location.lat,
+												longitude: location.lng,
+											}}
+										/>
+									</MapView>
+
+									<View
+										style={{
+											position: "absolute",
+											bottom: 10,
+											left: 10,
+											right: 10,
+											backgroundColor: "rgba(255,255,255,0.92)",
+											padding: 10,
+											borderRadius: 10,
+										}}
+									>
+										<Text
+											style={{
+												fontSize: 12,
+												fontWeight: "700",
+												color: "#004ac6",
+											}}
+										>
+											{location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+										</Text>
+
+										<Text
+											style={{
+												fontSize: 11,
+												color: "#737686",
+												marginTop: 2,
+											}}
+										>
+											Toca para ajustar manualmente
+										</Text>
+									</View>
+								</>
+							) : (
+								<View
+									style={{
+										flex: 1,
+										alignItems: "center",
+										justifyContent: "center",
+										gap: 6,
+									}}
+								>
+									<Text style={{ fontSize: 36 }}>🗺️</Text>
+
 									<Text
 										style={{
 											fontSize: 12,
-											color: "#004ac6",
-											fontWeight: "600",
+											color: "#737686",
 										}}
 									>
-										{location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+										Toca para seleccionar ubicación
 									</Text>
 								</View>
-							) : (
-								<TouchableOpacity
-									onPress={obtenerUbicacion}
-									style={{ alignItems: "center", gap: 4 }}
-								>
-									<Text style={{ fontSize: 36 }}>🗺️</Text>
-									<Text style={{ fontSize: 12, color: "#737686" }}>
-										Toca para obtener ubicación
-									</Text>
-								</TouchableOpacity>
 							)}
-						</View>
+						</TouchableOpacity>
 
-						<Text style={{ fontSize: 12, color: "#737686", marginTop: 8 }}>
-							ℹ️ Ubicación detectada automáticamente mediante GPS.
+						<Text
+							style={{
+								fontSize: 12,
+								color: "#737686",
+								marginTop: 8,
+							}}
+						>
+							ℹ️ Puedes mover el mapa para ajustar la ubicación exacta.
 						</Text>
 					</View>
 
