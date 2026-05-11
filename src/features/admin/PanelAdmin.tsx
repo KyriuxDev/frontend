@@ -1,14 +1,9 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  TextInput,
-  Platform,
+  View, Text, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, TextInput, Platform,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/auth.store';
 import { useReportes, useCambiarEstadoReporte } from '@/src/features/reportes/reporte.queries';
 import { useComunidades, useActualizarComunidad, useCrearComunidad } from '@/src/features/comunidades/comunidad.queries';
@@ -16,200 +11,377 @@ import { ReporteResumen, EstadoReporte } from '@/src/features/reportes/reporte.t
 import { ComunidadResumen } from '@/src/features/comunidades/comunidad.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
 
-// ─── Tokens de diseño ────────────────────────────────────────────────────────
+// ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
-  verde:       '#1d4e32',
-  verdeClaro:  '#2d6a45',
-  verdePale:   '#f0fdf4',
-  verdeMid:    '#dcfce7',
-  verdeText:   '#166534',
-  amarillo:    '#fef3c7',
-  amarilloText:'#92400e',
-  azul:        '#dbeafe',
-  azulText:    '#1e40af',
-  rojo:        '#fee2e2',
-  rojoText:    '#991b1b',
-  gris:        '#f8fafc',
-  grisBorde:   '#e2e8f0',
-  grisMid:     '#94a3b8',
-  texto:       '#0f172a',
-  textoSub:    '#64748b',
-  blanco:      '#ffffff',
-  bg:          '#f1f5f1',
+  verde:      '#1d4e32',
+  verdeHover: '#edf7f0',
+  verdeBorde: '#b8e0c5',
+  verdeMid:   '#dcfce7',
+  verdeText:  '#166534',
+  bg:         '#f4f6f4',
+  blanco:     '#ffffff',
+  borde:      '#e8ede8',
+  bordeLight: '#f0f4f0',
+  texto:      '#0f1f0f',
+  textoSub:   '#4a5e4a',
+  textoMuted: '#9aaa9a',
+  amber: '#fef3c7', amberText: '#92400e', amberDot: '#d97706',
+  azul:  '#dbeafe', azulText:  '#1e40af', azulDot:  '#3b82f6',
+  rojo:  '#fee2e2', rojoText:  '#991b1b', rojoDot:  '#dc2626',
 };
 
-// ─── Helpers de estado ───────────────────────────────────────────────────────
-function estadoConfig(estado: EstadoReporte) {
-  switch (estado) {
-    case 'PENDIENTE':  return { bg: C.amarillo,  text: C.amarilloText, label: 'Pendiente',   dot: '#d97706' };
-    case 'EN_PROCESO': return { bg: C.azul,      text: C.azulText,     label: 'En Proceso',  dot: '#3b82f6' };
-    case 'RESUELTO':   return { bg: C.verdeMid,  text: C.verdeText,    label: 'Resuelto',    dot: '#16a34a' };
-    case 'RECHAZADO':  return { bg: C.rojo,      text: C.rojoText,     label: 'Rechazado',   dot: '#dc2626' };
+type Tab = 'dashboard' | 'reportes' | 'comunidades' | 'alertas' | 'usuarios';
+
+function estadoCfg(e: EstadoReporte) {
+  switch (e) {
+    case 'PENDIENTE':  return { bg: C.amber,    text: C.amberText, dot: C.amberDot, label: 'Pendiente'  };
+    case 'EN_PROCESO': return { bg: C.azul,     text: C.azulText,  dot: C.azulDot,  label: 'En Proceso' };
+    case 'RESUELTO':   return { bg: C.verdeMid, text: C.verdeText, dot: '#16a34a',  label: 'Resuelto'   };
+    case 'RECHAZADO':  return { bg: C.rojo,     text: C.rojoText,  dot: C.rojoDot,  label: 'Rechazado'  };
   }
 }
 
-const ESTADOS: EstadoReporte[] = ['PENDIENTE', 'EN_PROCESO', 'RESUELTO', 'RECHAZADO'];
+// ─── Nav config ───────────────────────────────────────────────────────────────
+type NavItem = {
+  key: Tab;
+  label: string;
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  badge?: { n: number; color: string; bg: string };
+};
 
-// ─── Chip de estado ──────────────────────────────────────────────────────────
-function ChipEstado({ estado }: { estado: EstadoReporte }) {
-  const cfg = estadoConfig(estado);
+const NAV: NavItem[] = [
+  { key: 'dashboard',   label: 'Dashboard',   icon: 'dashboard'        },
+  { key: 'reportes',    label: 'Reportes',    icon: 'assessment',       badge: { n: 12, color: C.amberText, bg: C.amber } },
+  { key: 'comunidades', label: 'Comunidades', icon: 'groups'            },
+  { key: 'alertas',     label: 'Alertas',     icon: 'notifications',    badge: { n: 3,  color: C.rojoText,  bg: C.rojo  } },
+  { key: 'usuarios',    label: 'Usuarios',    icon: 'manage-accounts'   },
+];
+
+const NAV_FOOTER: { icon: React.ComponentProps<typeof MaterialIcons>['name']; label: string }[] = [
+  { icon: 'settings', label: 'Ajustes' },
+  { icon: 'logout',   label: 'Cerrar sesión' },
+];
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+function Sidebar({ tab, setTab, usuario }: {
+  tab: Tab; setTab: (t: Tab) => void; usuario: any;
+}) {
+  const ini = (usuario?.nombre ?? usuario?.email ?? 'A')
+    .split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+
   return (
     <View style={{
-      backgroundColor: cfg.bg,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 999,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-    }}>
-      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cfg.dot }} />
-      <Text style={{ fontSize: 11, fontWeight: '700', color: cfg.text }}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-// ─── Tarjeta de stat ─────────────────────────────────────────────────────────
-function StatCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
-  return (
-    <View style={{
-      flex: 1,
+      width: 240,
       backgroundColor: C.blanco,
-      borderRadius: 12,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: C.grisBorde,
-      minWidth: 120,
+      borderRightWidth: 1,
+      borderRightColor: C.borde,
+      flexDirection: 'column',
     }}>
-      <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text style={{ fontSize: 28, fontWeight: '800', color, marginTop: 8 }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: C.textoSub, marginTop: 2 }}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Fila de reporte (versión tabla web) ─────────────────────────────────────
-function FilaReporte({ reporte }: { reporte: ReporteResumen }) {
-  const [expandido, setExpandido] = useState(false);
-  const { mutate: cambiarEstado, isPending } = useCambiarEstadoReporte(reporte.id);
-
-  const handleCambio = (nuevoEstado: EstadoReporte) => {
-    if (nuevoEstado === reporte.estado) return;
-    const cfg = estadoConfig(nuevoEstado);
-    Alert.alert(
-      'Cambiar estado',
-      `¿Cambiar a "${cfg.label}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', onPress: () => cambiarEstado({ estado: nuevoEstado }) },
-      ],
-    );
-  };
-
-  return (
-    <View style={{
-      backgroundColor: C.blanco,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: expandido ? C.verde : C.grisBorde,
-      marginBottom: 8,
-      overflow: 'hidden',
-    }}>
-      {/* Fila principal */}
-      <TouchableOpacity
-        onPress={() => setExpandido(!expandido)}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: 14,
-          gap: 12,
-        }}
-      >
-        {/* Indicador de categoría */}
-        <View style={{
-          width: 4,
-          height: 40,
-          borderRadius: 2,
-          backgroundColor:
-            reporte.categoria === 'INFRAESTRUCTURA' ? '#3b82f6' :
-            reporte.categoria === 'VIALIDAD'        ? '#f59e0b' :
-            reporte.categoria === 'BLOQUEOS'        ? '#ec4899' : '#22c55e',
-        }} />
-
-        {/* Info principal */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: C.texto }} numberOfLines={1}>
-            {reporte.titulo}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 3 }}>
-            <Text style={{ fontSize: 12, color: C.textoSub }}>
-              📍 {reporte.comunidad.nombre}
-            </Text>
-            <Text style={{ fontSize: 12, color: C.textoSub }}>
-              📅 {formatearFechaCorta(reporte.createdAt)}
-            </Text>
-            <Text style={{ fontSize: 12, color: C.textoSub }}>
-              ⭐ {reporte.gravedad}/5
-            </Text>
+      {/* Logo */}
+      <View style={{ padding: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.bordeLight }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{
+            width: 36, height: 36, backgroundColor: C.verde,
+            borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>IR</Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: C.texto, letterSpacing: -0.5 }}>IRSU</Text>
+            <Text style={{ fontSize: 10, color: C.textoMuted, marginTop: 1 }}>Administración Central</Text>
           </View>
         </View>
+      </View>
 
-        {/* Chip categoría */}
+      {/* Nav principal */}
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingVertical: 8 }}>
+          {NAV.map((item) => {
+            const activo = tab === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  paddingVertical: 10, paddingHorizontal: 20,
+                  marginHorizontal: 8, marginVertical: 1,
+                  borderRadius: 8,
+                  backgroundColor: activo ? C.verdeHover : 'transparent',
+                  position: 'relative',
+                }}
+              >
+                {/* Indicador activo */}
+                {activo && (
+                  <View style={{
+                    position: 'absolute', left: -8, top: 8, bottom: 8,
+                    width: 3, backgroundColor: C.verde, borderRadius: 3,
+                  }} />
+                )}
+
+                <MaterialIcons
+                  name={item.icon}
+                  size={22}
+                  color={activo ? C.verde : C.textoMuted}
+                />
+
+                <Text style={{
+                  fontSize: 14, flex: 1,
+                  fontWeight: activo ? '700' : '500',
+                  color: activo ? C.verde : C.textoSub,
+                }}>
+                  {item.label}
+                </Text>
+
+                {item.badge && (
+                  <View style={{
+                    backgroundColor: item.badge.bg,
+                    paddingHorizontal: 7, paddingVertical: 1, borderRadius: 99,
+                  }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: item.badge.color }}>
+                      {item.badge.n}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      {/* Footer: ajustes + cerrar sesión + usuario */}
+      <View style={{ borderTopWidth: 1, borderTopColor: C.bordeLight }}>
+        {NAV_FOOTER.map((item) => (
+          <TouchableOpacity
+            key={item.label}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 12,
+              paddingVertical: 10, paddingHorizontal: 20,
+              marginHorizontal: 8, marginVertical: 1, borderRadius: 8,
+            }}
+          >
+            <MaterialIcons name={item.icon} size={20} color={C.textoMuted} />
+            <Text style={{ fontSize: 14, color: C.textoSub, fontWeight: '500' }}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Tarjeta de usuario */}
         <View style={{
-          backgroundColor: '#f1f5f9',
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-          borderRadius: 6,
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          padding: 14, margin: 8, borderRadius: 8,
+          borderTopWidth: 1, borderTopColor: C.bordeLight,
+          marginTop: 4,
         }}>
-          <Text style={{ fontSize: 10, fontWeight: '600', color: C.textoSub }}>
-            {reporte.categoria}
+          <View style={{
+            width: 32, height: 32, borderRadius: 16,
+            backgroundColor: C.verdeHover, borderWidth: 1.5, borderColor: C.verdeBorde,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: C.verde }}>{ini}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12.5, fontWeight: '700', color: C.texto }} numberOfLines={1}>
+              {usuario?.nombre ?? usuario?.email}
+            </Text>
+            <Text style={{ fontSize: 10, color: C.textoMuted }}>{usuario?.rol}</Text>
+          </View>
+          <MaterialIcons name="more-vert" size={18} color={C.textoMuted} />
+        </View>
+        <View style={{ height: 8 }} />
+      </View>
+    </View>
+  );
+}
+
+// ─── TopBar ───────────────────────────────────────────────────────────────────
+const TITULOS: Record<Tab, string> = {
+  dashboard:   'IRSU Dashboard',
+  reportes:    'Gestión de Reportes',
+  comunidades: 'Gestión de Comunidades',
+  alertas:     'Alertas Activas',
+  usuarios:    'Gestión de Usuarios',
+};
+const SUBS: Record<Tab, string> = {
+  dashboard:   'Resumen general del sistema',
+  reportes:    'Revisa y actualiza el estado de incidencias ciudadanas',
+  comunidades: 'Administra y activa comunidades del municipio',
+  alertas:     'Gestiona alertas críticas del sistema',
+  usuarios:    'Administra roles y permisos',
+};
+
+function TopBar({ tab, usuario }: { tab: Tab; usuario: any }) {
+  const ini = (usuario?.nombre ?? usuario?.email ?? 'A')
+    .split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+
+  return (
+    <View style={{
+      height: 52, backgroundColor: C.blanco,
+      borderBottomWidth: 1, borderBottomColor: C.borde,
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', paddingHorizontal: 24,
+    }}>
+      <View>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: C.texto }}>{TITULOS[tab]}</Text>
+        <Text style={{ fontSize: 11, color: C.textoMuted }}>{SUBS[tab]}</Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {/* Botones de acción */}
+        <TouchableOpacity>
+          <MaterialIcons name="notifications" size={22} color={C.textoMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity>
+          <MaterialIcons name="help-outline" size={22} color={C.textoMuted} />
+        </TouchableOpacity>
+
+        {/* Separador */}
+        <View style={{ width: 1, height: 28, backgroundColor: C.borde }} />
+
+        {/* Info usuario */}
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
+            ADMINISTRADOR
+          </Text>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: C.verde }}>
+            {usuario?.nombre ?? usuario?.email}
           </Text>
         </View>
 
-        {/* Estado */}
-        <ChipEstado estado={reporte.estado} />
+        <View style={{
+          width: 32, height: 32, borderRadius: 16,
+          backgroundColor: C.verdeHover, borderWidth: 1.5, borderColor: C.verdeBorde,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: C.verde }}>{ini}</Text>
+        </View>
 
-        {/* Toggle */}
-        <Text style={{ color: C.grisMid, fontSize: 14 }}>{expandido ? '▲' : '▼'}</Text>
+        {/* Pill sistema activo */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 6,
+          backgroundColor: C.verdeHover, borderWidth: 1, borderColor: C.verdeBorde,
+          borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5,
+        }}>
+          <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: '#22c55e' }} />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: C.verde }}>Sistema activo</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, icon, topColor }: {
+  label: string;
+  value: number;
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  topColor: string;
+}) {
+  return (
+    <View style={{
+      flex: 1, minWidth: 130,
+      backgroundColor: C.blanco,
+      borderRadius: 10, borderWidth: 1, borderColor: C.borde,
+      padding: 16, borderTopWidth: 3, borderTopColor: topColor,
+    }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
+          {label.toUpperCase()}
+        </Text>
+        <MaterialIcons name={icon} size={20} color={topColor} style={{ opacity: 0.4 }} />
+      </View>
+      <Text style={{ fontSize: 30, fontWeight: '800', color: C.texto, letterSpacing: -1 }}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── Chip estado ──────────────────────────────────────────────────────────────
+function ChipEstado({ estado }: { estado: EstadoReporte }) {
+  const c = estadoCfg(estado);
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      backgroundColor: c.bg, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99,
+    }}>
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.dot }} />
+      <Text style={{ fontSize: 11, fontWeight: '700', color: c.text }}>{c.label}</Text>
+    </View>
+  );
+}
+
+// ─── Fila reporte ─────────────────────────────────────────────────────────────
+function FilaReporte({ reporte }: { reporte: ReporteResumen }) {
+  const [open, setOpen] = useState(false);
+  const { mutate, isPending } = useCambiarEstadoReporte(reporte.id);
+
+  const catDot =
+    reporte.categoria === 'VIALIDAD'        ? C.amberDot :
+    reporte.categoria === 'INFRAESTRUCTURA' ? C.azulDot  :
+    reporte.categoria === 'SEGURIDAD'       ? '#16a34a'  : '#db2777';
+
+  return (
+    <View style={{
+      borderRadius: 8, borderWidth: 1,
+      borderColor: open ? C.verde : C.borde,
+      marginBottom: 6, backgroundColor: C.blanco, overflow: 'hidden',
+    }}>
+      <TouchableOpacity
+        onPress={() => setOpen(!open)}
+        style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}
+      >
+        <View style={{ width: 3, height: 38, borderRadius: 2, backgroundColor: catDot }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13.5, fontWeight: '600', color: C.texto }} numberOfLines={1}>
+            {reporte.titulo}
+          </Text>
+          <Text style={{ fontSize: 11, color: C.textoMuted, marginTop: 2 }}>
+            {reporte.comunidad.nombre}  ·  {formatearFechaCorta(reporte.createdAt)}  ·  ★ {reporte.gravedad}/5
+          </Text>
+        </View>
+        <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted }}>{reporte.categoria}</Text>
+        </View>
+        <ChipEstado estado={reporte.estado} />
+        <MaterialIcons
+          name={open ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+          size={20}
+          color={C.textoMuted}
+        />
       </TouchableOpacity>
 
-      {/* Panel de acciones expandido */}
-      {expandido && (
+      {open && (
         <View style={{
-          borderTopWidth: 1,
-          borderTopColor: C.grisBorde,
-          padding: 14,
-          backgroundColor: C.gris,
+          borderTopWidth: 1, borderTopColor: C.bordeLight,
+          padding: 12, backgroundColor: '#fafcfa',
         }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: C.textoSub, marginBottom: 10, letterSpacing: 0.5 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, marginBottom: 10, letterSpacing: 0.5 }}>
             CAMBIAR ESTADO
           </Text>
-          {isPending ? (
-            <ActivityIndicator color={C.verde} />
-          ) : (
+          {isPending ? <ActivityIndicator color={C.verde} /> : (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {ESTADOS.map((e) => {
-                const cfg = estadoConfig(e);
+              {(['PENDIENTE','EN_PROCESO','RESUELTO','RECHAZADO'] as EstadoReporte[]).map((e) => {
+                const c = estadoCfg(e);
                 const activo = e === reporte.estado;
                 return (
                   <TouchableOpacity
                     key={e}
-                    onPress={() => handleCambio(e)}
+                    onPress={() => {
+                      if (activo) return;
+                      Alert.alert('Confirmar', `¿Cambiar a "${c.label}"?`, [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: 'Confirmar', onPress: () => mutate({ estado: e }) },
+                      ]);
+                    }}
                     style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 8,
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingHorizontal: 12, paddingVertical: 7, borderRadius: 7,
                       borderWidth: activo ? 2 : 1,
-                      borderColor: activo ? cfg.dot : C.grisBorde,
-                      backgroundColor: activo ? cfg.bg : C.blanco,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
+                      borderColor: activo ? c.dot : C.borde,
+                      backgroundColor: activo ? c.bg : C.blanco,
                     }}
                   >
-                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cfg.dot }} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? cfg.text : C.textoSub }}>
-                      {cfg.label}
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.dot }} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? c.text : C.textoSub }}>
+                      {c.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -222,281 +394,188 @@ function FilaReporte({ reporte }: { reporte: ReporteResumen }) {
   );
 }
 
-// ─── Sección de Reportes ─────────────────────────────────────────────────────
+// ─── Sección Reportes ─────────────────────────────────────────────────────────
 function SeccionReportes() {
-  const [filtroEstado, setFiltroEstado] = useState<EstadoReporte | undefined>(undefined);
-  const { data, isLoading, isError, refetch } = useReportes({ estado: filtroEstado });
-
-  const reportes = data?.data ?? [];
-  const total    = data?.meta.total ?? 0;
-
-  // Conteos para stats
-  const { data: dataTodos } = useReportes({});
-  const todos = dataTodos?.data ?? [];
-  const conteos = {
-    pendiente:  todos.filter(r => r.estado === 'PENDIENTE').length,
-    enProceso:  todos.filter(r => r.estado === 'EN_PROCESO').length,
-    resuelto:   todos.filter(r => r.estado === 'RESUELTO').length,
-    rechazado:  todos.filter(r => r.estado === 'RECHAZADO').length,
+  const [filtro, setFiltro] = useState<EstadoReporte | undefined>(undefined);
+  const { data, isLoading, isError, refetch } = useReportes({ estado: filtro });
+  const { data: all } = useReportes({});
+  const todos = all?.data ?? [];
+  const stats = {
+    pend: todos.filter(r => r.estado === 'PENDIENTE').length,
+    proc: todos.filter(r => r.estado === 'EN_PROCESO').length,
+    resv: todos.filter(r => r.estado === 'RESUELTO').length,
+    rech: todos.filter(r => r.estado === 'RECHAZADO').length,
   };
 
-  const FILTROS: { label: string; value: EstadoReporte | undefined }[] = [
-    { label: 'Todos', value: undefined },
-    { label: 'Pendiente', value: 'PENDIENTE' },
-    { label: 'En Proceso', value: 'EN_PROCESO' },
-    { label: 'Resuelto', value: 'RESUELTO' },
-    { label: 'Rechazado', value: 'RECHAZADO' },
+  const FILTROS = [
+    { label: 'Todos',      value: undefined },
+    { label: 'Pendiente',  value: 'PENDIENTE'  as EstadoReporte },
+    { label: 'En Proceso', value: 'EN_PROCESO' as EstadoReporte },
+    { label: 'Resuelto',   value: 'RESUELTO'   as EstadoReporte },
+    { label: 'Rechazado',  value: 'RECHAZADO'  as EstadoReporte },
   ];
 
   return (
-    <View style={{ flex: 1 }}>
-
-      {/* Stats cards */}
+    <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Stats */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <StatCard label="Pendientes"  value={conteos.pendiente} color={C.amarilloText} icon="⏳" />
-        <StatCard label="En Proceso"  value={conteos.enProceso} color={C.azulText}     icon="🔧" />
-        <StatCard label="Resueltos"   value={conteos.resuelto}  color={C.verdeText}    icon="✅" />
-        <StatCard label="Rechazados"  value={conteos.rechazado} color={C.rojoText}     icon="❌" />
+        <StatCard label="Pendientes" value={stats.pend} icon="pending"       topColor={C.amberDot} />
+        <StatCard label="En Proceso" value={stats.proc} icon="sync"          topColor={C.azulDot}  />
+        <StatCard label="Resueltos"  value={stats.resv} icon="check-circle"  topColor="#16a34a"    />
+        <StatCard label="Rechazados" value={stats.rech} icon="cancel"        topColor={C.rojoDot}  />
       </View>
 
       {/* Filtros */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {FILTROS.map((f) => {
-          const activo = filtroEstado === f.value;
+          const activo = filtro === f.value;
           return (
             <TouchableOpacity
               key={String(f.value)}
-              onPress={() => setFiltroEstado(f.value)}
+              onPress={() => setFiltro(f.value)}
               style={{
-                paddingHorizontal: 16,
-                paddingVertical: 7,
-                borderRadius: 999,
+                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99,
                 backgroundColor: activo ? C.verde : C.blanco,
-                borderWidth: 1,
-                borderColor: activo ? C.verde : C.grisBorde,
+                borderWidth: 1, borderColor: activo ? C.verde : C.borde,
               }}
             >
-              <Text style={{
-                fontSize: 13,
-                fontWeight: '600',
-                color: activo ? C.blanco : C.textoSub,
-              }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? '#fff' : C.textoSub }}>
                 {f.label}
-                {f.value && ` (${conteos[f.value === 'PENDIENTE' ? 'pendiente' : f.value === 'EN_PROCESO' ? 'enProceso' : f.value === 'RESUELTO' ? 'resuelto' : 'rechazado']})`}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Encabezado de tabla */}
+      {/* Encabezado tabla */}
       <View style={{
-        flexDirection: 'row',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        backgroundColor: C.gris,
-        borderRadius: 8,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: C.grisBorde,
+        flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8,
+        backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 8,
+        borderWidth: 1, borderColor: C.borde,
       }}>
-        <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5 }}>
+        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
           REPORTE
         </Text>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5, marginRight: 80 }}>
-          CATEGORÍA
-        </Text>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5, marginRight: 30 }}>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginRight: 90 }}>
           ESTADO
         </Text>
       </View>
 
-      {/* Lista */}
       {isLoading && (
         <View style={{ alignItems: 'center', paddingVertical: 40 }}>
           <ActivityIndicator color={C.verde} size="large" />
-          <Text style={{ color: C.textoSub, marginTop: 12 }}>Cargando reportes...</Text>
+          <Text style={{ color: C.textoMuted, marginTop: 10 }}>Cargando reportes...</Text>
         </View>
       )}
-
       {isError && (
-        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-          <Text style={{ fontSize: 32 }}>⚠️</Text>
-          <Text style={{ color: C.textoSub, marginTop: 8 }}>Error al cargar reportes</Text>
+        <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
+          <MaterialIcons name="error-outline" size={40} color={C.textoMuted} />
+          <Text style={{ color: C.textoMuted }}>Error al cargar reportes</Text>
           <TouchableOpacity
             onPress={() => refetch()}
-            style={{ marginTop: 12, backgroundColor: C.verde, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}
+            style={{ backgroundColor: C.verde, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8 }}
           >
-            <Text style={{ color: C.blanco, fontWeight: '600' }}>Reintentar</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Reintentar</Text>
           </TouchableOpacity>
         </View>
       )}
-
-      {!isLoading && !isError && reportes.length === 0 && (
-        <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-          <Text style={{ fontSize: 48 }}>📋</Text>
-          <Text style={{ fontSize: 16, color: C.textoSub, marginTop: 12 }}>
-            No hay reportes con este filtro
-          </Text>
+      {!isLoading && !isError && (data?.data ?? []).length === 0 && (
+        <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
+          <MaterialIcons name="inbox" size={48} color={C.textoMuted} />
+          <Text style={{ color: C.textoMuted }}>No hay reportes con este filtro</Text>
         </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {reportes.map((r) => <FilaReporte key={r.id} reporte={r} />)}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
+      {(data?.data ?? []).map((r) => <FilaReporte key={r.id} reporte={r} />)}
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
 
-// ─── Sección de Comunidades ──────────────────────────────────────────────────
+// ─── Sección Comunidades ──────────────────────────────────────────────────────
 function SeccionComunidades() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nombre, setNombre]           = useState('');
   const [municipioId, setMunicipioId] = useState('');
 
-  const { data, isLoading }             = useComunidades();
+  const { data, isLoading }                       = useComunidades();
   const { mutate: activar, isPending: activando } = useActualizarComunidad();
-  const { mutate: crear,   isPending: creando }   = useCrearComunidad();
+  const { mutate: crear,   isPending: creando   } = useCrearComunidad();
 
   const comunidades = data?.data ?? [];
   const activas     = comunidades.filter(c => c.status === 'ACTIVO').length;
   const pendientes  = comunidades.filter(c => c.status === 'PENDIENTE').length;
 
-  const handleActivar = (com: ComunidadResumen) => {
-    Alert.alert('Activar comunidad', `¿Activar "${com.nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Activar', onPress: () => activar({ slug: com.slug, dto: { status: 'ACTIVO' } }) },
-    ]);
+  const irsuColor = (v: number) => v > 100 ? C.rojoDot : v > 50 ? C.amberDot : '#16a34a';
+  const statusCfg = (s: string) => {
+    if (s === 'ACTIVO')    return { bg: C.verdeMid, text: C.verdeText, dot: '#16a34a'  };
+    if (s === 'PENDIENTE') return { bg: C.amber,    text: C.amberText, dot: C.amberDot };
+    if (s === 'RECHAZADO') return { bg: C.rojo,     text: C.rojoText,  dot: C.rojoDot  };
+    return { bg: '#f1f5f9', text: '#64748b', dot: '#94a3b8' };
   };
-
-  const handleCrear = () => {
-    if (!nombre.trim() || !municipioId.trim()) {
-      Alert.alert('Error', 'Nombre y municipioId son obligatorios');
-      return;
-    }
-    crear(
-      { nombre: nombre.trim(), municipioId: parseInt(municipioId) },
-      {
-        onSuccess: () => {
-          setNombre(''); setMunicipioId(''); setMostrarForm(false);
-          Alert.alert('✅ Creada', 'Comunidad creada en estado PENDIENTE.');
-        },
-        onError: (err: any) => {
-          Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear');
-        },
-      },
-    );
-  };
-
-  function estadoColor(status: string) {
-    switch (status) {
-      case 'ACTIVO':     return { bg: C.verdeMid,  text: C.verdeText,    dot: '#16a34a' };
-      case 'PENDIENTE':  return { bg: C.amarillo,  text: C.amarilloText, dot: '#d97706' };
-      case 'RECHAZADO':  return { bg: C.rojo,      text: C.rojoText,     dot: '#dc2626' };
-      case 'SUSPENDIDO': return { bg: '#f1f5f9',   text: '#64748b',      dot: '#94a3b8' };
-      default:           return { bg: '#f1f5f9',   text: '#64748b',      dot: '#94a3b8' };
-    }
-  }
 
   return (
-    <View style={{ flex: 1 }}>
-
-      {/* Stats comunidades */}
+    <ScrollView showsVerticalScrollIndicator={false}>
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-        <StatCard label="Activas"    value={activas}   color={C.verdeText}    icon="🏘️" />
-        <StatCard label="Pendientes" value={pendientes} color={C.amarilloText} icon="⏳" />
+        <StatCard label="Activas"    value={activas}   icon="location-city" topColor={C.verde}    />
+        <StatCard label="Pendientes" value={pendientes} icon="pending"       topColor={C.amberDot} />
       </View>
 
-      {/* Botón nueva comunidad */}
       <TouchableOpacity
         onPress={() => setMostrarForm(!mostrarForm)}
         style={{
-          backgroundColor: mostrarForm ? '#dc2626' : C.verde,
-          borderRadius: 10,
-          padding: 14,
-          alignItems: 'center',
+          backgroundColor: mostrarForm ? C.rojoDot : C.verde,
+          borderRadius: 10, padding: 14,
+          flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8,
           marginBottom: 16,
-          flexDirection: 'row',
-          justifyContent: 'center',
-          gap: 8,
         }}
       >
-        <Text style={{ color: C.blanco, fontWeight: '700', fontSize: 15 }}>
-          {mostrarForm ? '✕  Cancelar' : '＋  Nueva comunidad'}
+        <MaterialIcons name={mostrarForm ? 'close' : 'add'} size={20} color="#fff" />
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+          {mostrarForm ? 'Cancelar' : 'Nueva comunidad'}
         </Text>
       </TouchableOpacity>
 
-      {/* Formulario */}
       {mostrarForm && (
         <View style={{
-          backgroundColor: C.blanco,
-          borderRadius: 12,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: C.grisBorde,
-          marginBottom: 16,
-          gap: 12,
+          backgroundColor: C.blanco, borderRadius: 12, padding: 20,
+          borderWidth: 1, borderColor: C.borde, marginBottom: 16, gap: 12,
         }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: C.texto }}>
-            Nueva Comunidad
-          </Text>
-          <View style={{ gap: 10 }}>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: C.textoSub, marginBottom: 6 }}>
-                NOMBRE
+          <Text style={{ fontSize: 14, fontWeight: '700', color: C.texto }}>Nueva Comunidad</Text>
+          {[
+            { label: 'NOMBRE',      val: nombre,      set: setNombre,      ph: 'Ej: Colonia Centro', kb: 'default' as const },
+            { label: 'ID MUNICIPIO', val: municipioId, set: setMunicipioId, ph: 'Número entero',       kb: 'numeric' as const },
+          ].map((f) => (
+            <View key={f.label}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 6 }}>
+                {f.label}
               </Text>
               <TextInput
-                value={nombre}
-                onChangeText={setNombre}
-                placeholder="Ej: Colonia Centro"
-                placeholderTextColor={C.grisMid}
+                value={f.val} onChangeText={f.set} placeholder={f.ph}
+                placeholderTextColor={C.textoMuted} keyboardType={f.kb}
                 style={{
-                  borderWidth: 1,
-                  borderColor: C.grisBorde,
-                  borderRadius: 8,
-                  padding: 10,
-                  fontSize: 14,
-                  color: C.texto,
-                  backgroundColor: C.gris,
+                  borderWidth: 1, borderColor: C.borde, borderRadius: 8,
+                  padding: 10, fontSize: 14, color: C.texto, backgroundColor: '#f9fafb',
                 }}
               />
             </View>
-            <View>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: C.textoSub, marginBottom: 6 }}>
-                ID MUNICIPIO
-              </Text>
-              <TextInput
-                value={municipioId}
-                onChangeText={setMunicipioId}
-                placeholder="Número entero"
-                placeholderTextColor={C.grisMid}
-                keyboardType="numeric"
-                style={{
-                  borderWidth: 1,
-                  borderColor: C.grisBorde,
-                  borderRadius: 8,
-                  padding: 10,
-                  fontSize: 14,
-                  color: C.texto,
-                  backgroundColor: C.gris,
-                }}
-              />
-            </View>
-          </View>
+          ))}
           <TouchableOpacity
-            onPress={handleCrear}
-            disabled={creando}
-            style={{
-              backgroundColor: creando ? '#86efac' : C.verde,
-              borderRadius: 8,
-              padding: 12,
-              alignItems: 'center',
+            onPress={() => {
+              if (!nombre.trim() || !municipioId.trim()) {
+                Alert.alert('Error', 'Nombre y municipioId son obligatorios'); return;
+              }
+              crear({ nombre: nombre.trim(), municipioId: parseInt(municipioId) }, {
+                onSuccess: () => { setNombre(''); setMunicipioId(''); setMostrarForm(false); },
+                onError:   (err: any) => Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear'),
+              });
             }}
+            disabled={creando}
+            style={{ backgroundColor: creando ? '#86efac' : C.verde, borderRadius: 8, padding: 12, alignItems: 'center' }}
           >
             {creando
-              ? <ActivityIndicator color={C.blanco} />
-              : <Text style={{ color: C.blanco, fontWeight: '700' }}>Crear comunidad</Text>
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={{ color: '#fff', fontWeight: '700' }}>Crear comunidad</Text>
             }
           </TouchableOpacity>
         </View>
@@ -504,320 +583,134 @@ function SeccionComunidades() {
 
       {/* Encabezado tabla */}
       <View style={{
-        flexDirection: 'row',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        backgroundColor: C.gris,
-        borderRadius: 8,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: C.grisBorde,
+        flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8,
+        backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 8,
+        borderWidth: 1, borderColor: C.borde,
       }}>
-        <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5 }}>
-          COMUNIDAD
-        </Text>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5, marginRight: 80 }}>
-          IRSU
-        </Text>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: C.textoSub, letterSpacing: 0.5 }}>
-          ESTADO
-        </Text>
+        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>COMUNIDAD</Text>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginRight: 60 }}>IRSU</Text>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>ESTADO</Text>
       </View>
 
-      {isLoading && (
-        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-          <ActivityIndicator color={C.verde} size="large" />
-        </View>
-      )}
+      {isLoading && <ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {comunidades.map((com) => {
-          const col = estadoColor(com.status);
-          return (
-            <View key={com.id} style={{
-              backgroundColor: C.blanco,
-              borderRadius: 10,
-              padding: 14,
-              borderWidth: 1,
-              borderColor: C.grisBorde,
-              marginBottom: 8,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-            }}>
-              {/* Dot IRSU */}
-              <View style={{
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor:
-                  com.irsuActual > 100 ? '#dc2626' :
-                  com.irsuActual > 50  ? '#d97706' : '#16a34a',
-              }} />
-
-              {/* Info */}
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: C.texto }}>
-                  {com.nombre}
-                </Text>
-                <Text style={{ fontSize: 12, color: C.textoSub, marginTop: 2 }}>
-                  {com.municipio.nombre}
-                </Text>
-              </View>
-
-              {/* IRSU */}
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '800',
-                color:
-                  com.irsuActual > 100 ? '#dc2626' :
-                  com.irsuActual > 50  ? '#d97706' : '#16a34a',
-                minWidth: 60,
-                textAlign: 'right',
-              }}>
-                {com.irsuActual.toFixed(1)}
-              </Text>
-
-              {/* Badge estado */}
-              <View style={{
-                backgroundColor: col.bg,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 999,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                minWidth: 90,
-                justifyContent: 'center',
-              }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: col.dot }} />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: col.text }}>
-                  {com.status}
-                </Text>
-              </View>
-
-              {/* Botón activar */}
-              {com.status === 'PENDIENTE' && (
-                <TouchableOpacity
-                  onPress={() => handleActivar(com)}
-                  disabled={activando}
-                  style={{
-                    backgroundColor: C.verde,
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text style={{ color: C.blanco, fontSize: 12, fontWeight: '700' }}>
-                    Activar
-                  </Text>
-                </TouchableOpacity>
-              )}
+      {comunidades.map((com) => {
+        const s = statusCfg(com.status);
+        return (
+          <View key={com.id} style={{
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+            backgroundColor: C.blanco, borderRadius: 8,
+            borderWidth: 1, borderColor: C.borde, padding: 12, marginBottom: 6,
+          }}>
+            <View style={{ width: 9, height: 9, borderRadius: 99, backgroundColor: irsuColor(com.irsuActual) }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13.5, fontWeight: '600', color: C.texto }}>{com.nombre}</Text>
+              <Text style={{ fontSize: 11, color: C.textoMuted }}>{com.municipio.nombre}</Text>
             </View>
-          );
-        })}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: irsuColor(com.irsuActual), minWidth: 50, textAlign: 'right' }}>
+              {com.irsuActual.toFixed(1)}
+            </Text>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5,
+              backgroundColor: s.bg, paddingHorizontal: 9, paddingVertical: 3,
+              borderRadius: 99, minWidth: 90, justifyContent: 'center',
+            }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.dot }} />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: s.text }}>{com.status}</Text>
+            </View>
+            {com.status === 'PENDIENTE' && (
+              <TouchableOpacity
+                disabled={activando}
+                onPress={() => Alert.alert('Activar', `¿Activar "${com.nombre}"?`, [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Activar', onPress: () => activar({ slug: com.slug, dto: { status: 'ACTIVO' } }) },
+                ])}
+                style={{ backgroundColor: C.verde, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 7 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Activar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })}
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+}
+
+// ─── Placeholder ──────────────────────────────────────────────────────────────
+function Proximamente({ icon, label }: {
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  label: string;
+}) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <MaterialIcons name={icon} size={56} color={C.textoMuted} />
+      <Text style={{ fontSize: 20, fontWeight: '700', color: C.texto }}>{label}</Text>
+      <Text style={{ fontSize: 14, color: C.textoMuted }}>Próximamente disponible</Text>
     </View>
   );
 }
 
 // ─── Panel Admin Principal ────────────────────────────────────────────────────
-type Tab = 'reportes' | 'comunidades';
-
 export function PanelAdmin() {
-  const [tabActiva, setTabActiva] = useState<Tab>('reportes');
+  const [tab, setTab] = useState<Tab>('reportes');
   const usuario = useAuthStore((s) => s.usuario);
+  const esWeb = Platform.OS === 'web';
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg, flexDirection: Platform.OS === 'web' ? 'row' : 'column' }}>
+    <View style={{ flex: 1, flexDirection: esWeb ? 'row' : 'column', backgroundColor: C.bg }}>
 
-      {/* ── Sidebar (solo web) ── */}
-      {Platform.OS === 'web' && (
-        <View style={{
-          width: 240,
-          backgroundColor: C.verde,
-          paddingTop: 40,
-          paddingHorizontal: 20,
-          paddingBottom: 20,
-        }}>
-          {/* Logo */}
-          <View style={{ marginBottom: 32 }}>
-            <Text style={{ fontSize: 26, fontWeight: '900', color: C.blanco, letterSpacing: -1 }}>
-              IRSU
-            </Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-              Panel Administrativo
-            </Text>
-          </View>
+      {esWeb && <Sidebar tab={tab} setTab={setTab} usuario={usuario} />}
 
-          {/* Nav items */}
-          {([
-            { key: 'reportes',    label: 'Reportes',    emoji: '📋' },
-            { key: 'comunidades', label: 'Comunidades', emoji: '🏘️' },
-          ] as { key: Tab; label: string; emoji: string }[]).map((item) => (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => setTabActiva(item.key)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 10,
-                marginBottom: 4,
-                backgroundColor: tabActiva === item.key ? 'rgba(255,255,255,0.15)' : 'transparent',
-              }}
-            >
-              <Text style={{ fontSize: 18 }}>{item.emoji}</Text>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: tabActiva === item.key ? '700' : '500',
-                color: tabActiva === item.key ? C.blanco : 'rgba(255,255,255,0.65)',
-              }}>
-                {item.label}
-              </Text>
-              {tabActiva === item.key && (
-                <View style={{
-                  marginLeft: 'auto' as any,
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: C.blanco,
-                }} />
-              )}
-            </TouchableOpacity>
-          ))}
+      <View style={{ flex: 1, overflow: 'hidden' as any }}>
 
-          {/* Info usuario */}
-          <View style={{
-            marginTop: 'auto' as any,
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(255,255,255,0.2)',
-            paddingTop: 16,
-          }}>
-            <View style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 8,
-            }}>
-              <Text style={{ fontSize: 18 }}>👤</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: C.blanco }}>
-              {usuario?.nombre ?? usuario?.email}
-            </Text>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-              {usuario?.rol}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* ── Contenido principal ── */}
-      <View style={{ flex: 1, overflow: 'hidden' }}>
-
-        {/* Header (solo móvil) */}
-        {Platform.OS !== 'web' && (
-          <View style={{
-            paddingHorizontal: 20,
-            paddingTop: 52,
-            paddingBottom: 12,
-            backgroundColor: C.verde,
-          }}>
-            <Text style={{ fontSize: 22, fontWeight: '900', color: C.blanco, letterSpacing: -0.5 }}>
-              IRSU Admin
-            </Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+        {/* Header móvil */}
+        {!esWeb && (
+          <View style={{ paddingHorizontal: 20, paddingTop: 52, paddingBottom: 12, backgroundColor: C.verde }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 }}>IRSU Admin</Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', marginTop: 2 }}>
               {usuario?.rol} · {usuario?.nombre ?? usuario?.email}
             </Text>
           </View>
         )}
 
-        {/* Header web con título de sección */}
-        {Platform.OS === 'web' && (
-          <View style={{
-            paddingHorizontal: 32,
-            paddingVertical: 20,
-            backgroundColor: C.blanco,
-            borderBottomWidth: 1,
-            borderBottomColor: C.grisBorde,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <View>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: C.texto }}>
-                {tabActiva === 'reportes' ? 'Gestión de Reportes' : 'Gestión de Comunidades'}
-              </Text>
-              <Text style={{ fontSize: 13, color: C.textoSub, marginTop: 2 }}>
-                {tabActiva === 'reportes'
-                  ? 'Revisa, filtra y actualiza el estado de los reportes ciudadanos'
-                  : 'Administra y activa comunidades del municipio'}
-              </Text>
-            </View>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              backgroundColor: C.verdePale,
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 999,
-            }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#16a34a' }} />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: C.verdeText }}>
-                Sistema activo
-              </Text>
-            </View>
-          </View>
-        )}
+        {esWeb && <TopBar tab={tab} usuario={usuario} />}
 
-        {/* Tabs (solo móvil) */}
-        {Platform.OS !== 'web' && (
-          <View style={{ flexDirection: 'row', backgroundColor: C.blanco, borderBottomWidth: 1, borderBottomColor: C.grisBorde }}>
-            {([
-              { key: 'reportes',    label: '📋 Reportes' },
-              { key: 'comunidades', label: '🏘️ Comunidades' },
-            ] as { key: Tab; label: string }[]).map((t) => (
-              <TouchableOpacity
-                key={t.key}
-                onPress={() => setTabActiva(t.key)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  borderBottomWidth: tabActiva === t.key ? 2 : 0,
-                  borderBottomColor: C.verde,
-                }}
-              >
-                <Text style={{
-                  fontSize: 13,
-                  fontWeight: tabActiva === t.key ? '700' : '500',
-                  color: tabActiva === t.key ? C.verde : C.textoSub,
-                }}>
-                  {t.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* Tabs móvil */}
+        {!esWeb && (
+          <View style={{ flexDirection: 'row', backgroundColor: C.blanco, borderBottomWidth: 1, borderBottomColor: C.borde }}>
+            {(['reportes','comunidades'] as Tab[]).map((t) => {
+              const icon: React.ComponentProps<typeof MaterialIcons>['name'] =
+                t === 'reportes' ? 'assessment' : 'groups';
+              return (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => setTab(t)}
+                  style={{
+                    flex: 1, paddingVertical: 12, alignItems: 'center',
+                    flexDirection: 'row', justifyContent: 'center', gap: 6,
+                    borderBottomWidth: tab === t ? 2 : 0, borderBottomColor: C.verde,
+                  }}
+                >
+                  <MaterialIcons name={icon} size={18} color={tab === t ? C.verde : C.textoMuted} />
+                  <Text style={{ fontSize: 13, fontWeight: tab === t ? '700' : '500', color: tab === t ? C.verde : C.textoMuted }}>
+                    {t === 'reportes' ? 'Reportes' : 'Comunidades'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
         {/* Contenido */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            padding: Platform.OS === 'web' ? 32 : 16,
-            paddingBottom: 60,
-          }}
-        >
-          {tabActiva === 'reportes'    && <SeccionReportes />}
-          {tabActiva === 'comunidades' && <SeccionComunidades />}
-        </ScrollView>
+        <View style={{ flex: 1, padding: esWeb ? 28 : 14 }}>
+          {tab === 'reportes'    && <SeccionReportes />}
+          {tab === 'comunidades' && <SeccionComunidades />}
+          {tab === 'alertas'     && <Proximamente icon="notifications"  label="Alertas"   />}
+          {tab === 'usuarios'    && <Proximamente icon="manage-accounts" label="Usuarios"  />}
+          {tab === 'dashboard'   && <Proximamente icon="dashboard"       label="Dashboard" />}
+        </View>
       </View>
     </View>
   );
