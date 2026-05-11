@@ -10,6 +10,7 @@ import { useComunidades, useActualizarComunidad, useCrearComunidad } from '@/src
 import { ReporteResumen, EstadoReporte } from '@/src/features/reportes/reporte.types';
 import { ComunidadResumen } from '@/src/features/comunidades/comunidad.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
+import { SeccionDashboard } from './SeccionDashboard';
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -654,7 +655,7 @@ function Proximamente({ icon, label }: {
 
 // ─── Panel Admin Principal ────────────────────────────────────────────────────
 export function PanelAdmin() {
-  const [tab, setTab] = useState<Tab>('reportes');
+  const [tab, setTab] = useState<Tab>('dashboard');
   const usuario = useAuthStore((s) => s.usuario);
   const esWeb = Platform.OS === 'web';
 
@@ -709,7 +710,7 @@ export function PanelAdmin() {
           {tab === 'comunidades' && <SeccionComunidades />}
           {tab === 'alertas'     && <Proximamente icon="notifications"  label="Alertas"   />}
           {tab === 'usuarios'    && <Proximamente icon="manage-accounts" label="Usuarios"  />}
-          {tab === 'dashboard'   && <Proximamente icon="dashboard"       label="Dashboard" />}
+          {tab === 'dashboard' && <SeccionDashboard />}
         </View>
       </View>
     </View>
