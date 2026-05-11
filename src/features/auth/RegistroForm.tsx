@@ -53,7 +53,7 @@ export function RegistroForm() {
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#2563eb', letterSpacing: -0.5 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#1d4e32', letterSpacing: -0.5 }}>
               IRSU
             </Text>
           </View>
@@ -223,7 +223,7 @@ export function RegistroForm() {
               disabled={isPending}
               style={{
                 height: 52,
-                backgroundColor: isPending ? '#b4c5ff' : '#2563eb',
+                backgroundColor: isPending ? '#86efac' : '#1d4e32',
                 borderRadius: 10,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -274,7 +274,7 @@ export function RegistroForm() {
           <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
             <Text style={{ color: '#434655', fontSize: 16 }}>¿Ya tienes cuenta? </Text>
             <Link href="/auth/login">
-              <Text style={{ color: '#004ac6', fontSize: 16, fontWeight: '700' }}>
+              <Text style={{ color: '#1d4e32', fontSize: 16, fontWeight: '700' }}>
                 Inicia sesión
               </Text>
             </Link>

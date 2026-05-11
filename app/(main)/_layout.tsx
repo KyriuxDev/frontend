@@ -13,7 +13,7 @@ export default function MainLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2563eb',
+        tabBarActiveTintColor: '#1d4e32',
       }}
     >
       <Tabs.Screen name="reportes/index"    options={{ title: 'Reportes' }} />

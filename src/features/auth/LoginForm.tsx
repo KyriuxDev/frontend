@@ -47,7 +47,7 @@ export function LoginForm() {
               width: 64,
               height: 64,
               borderRadius: 12,
-              backgroundColor: '#2563eb',
+              backgroundColor: '#1d4e32',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 16,
@@ -198,7 +198,7 @@ export function LoginForm() {
             disabled={isPending}
             style={{
               height: 52,
-              backgroundColor: isPending ? '#b4c5ff' : '#2563eb',
+              backgroundColor: isPending ? '#86efac' : '#1d4e32',
               borderRadius: 8,
               alignItems: 'center',
               justifyContent: 'center',
@@ -264,7 +264,7 @@ export function LoginForm() {
             ¿Nuevo en la comunidad?{' '}
           </Text>
           <Link href="/auth/registro">
-            <Text style={{ color: '#004ac6', fontSize: 18, fontWeight: '600' }}>
+            <Text style={{ color: '#1d4e32', fontSize: 18, fontWeight: '600' }}>
               Regístrate
             </Text>
           </Link>

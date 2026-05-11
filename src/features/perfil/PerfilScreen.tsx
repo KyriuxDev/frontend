@@ -146,7 +146,7 @@ export function PerfilScreen() {
         borderBottomWidth: 1,
         borderBottomColor: '#e2e8f0',
       }}>
-        <Text style={{ fontSize: 22, fontWeight: '900', color: '#2563eb', letterSpacing: -0.5 }}>IRSU</Text>
+        <Text style={{ fontSize: 22, fontWeight: '900', color: '#1d4e32', letterSpacing: -0.5 }}>IRSU</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -170,11 +170,11 @@ export function PerfilScreen() {
               width: 96,
               height: 96,
               borderRadius: 48,
-              backgroundColor: '#2563eb',
+              backgroundColor: '#1d4e32',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 16,
-              shadowColor: '#2563eb',
+              shadowColor: '#1d4e32',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -195,8 +195,8 @@ export function PerfilScreen() {
 
             {/* Badges */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ backgroundColor: '#eff4ff', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#004ac6' }}>
+              <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1d4e32' }}>
                   {labelRol(usuario?.rol ?? 'USUARIO')}
                 </Text>
               </View>
@@ -210,7 +210,7 @@ export function PerfilScreen() {
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
             <View style={{
               flex: 1,
-              backgroundColor: '#eff4ff',
+              backgroundColor: '#f0fdf4',
               borderRadius: 12,
               padding: 16,
               borderWidth: 1,
@@ -241,11 +241,11 @@ export function PerfilScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0b1c30' }}>Mis Reportes</Text>
               <TouchableOpacity onPress={() => router.push('/(main)/reportes')}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#004ac6' }}>Ver todos</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#1d4e32' }}>Ver todos</Text>
               </TouchableOpacity>
             </View>
 
-            {isLoading && <ActivityIndicator color="#2563eb" style={{ marginTop: 20 }} />}
+            {isLoading && <ActivityIndicator color="#1d4e32" style={{ marginTop: 20 }} />}
 
             {!isLoading && recientes.length === 0 && (
               <View style={{ alignItems: 'center', paddingVertical: 32 }}>

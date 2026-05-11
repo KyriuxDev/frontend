@@ -133,7 +133,7 @@ function CardReporte({ reporte }: { reporte: ReporteResumen }) {
           <Text style={{ fontSize: 12, color: '#737686' }}>
             {formatearFechaCorta(reporte.createdAt)}
           </Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#004ac6' }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#1d4e32' }}>
             Ver detalle →
           </Text>
         </View>
@@ -171,7 +171,7 @@ export function ListaReportes() {
           alignItems: 'center',
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '900', color: '#2563eb', letterSpacing: -0.5 }}>
+        <Text style={{ fontSize: 22, fontWeight: '900', color: '#1d4e32', letterSpacing: -0.5 }}>
           IRSU
         </Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -210,7 +210,7 @@ export function ListaReportes() {
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   borderRadius: 999,
-                  backgroundColor: filtroActivo === f.value ? '#004ac6' : '#e5eeff',
+                  backgroundColor: filtroActivo === f.value ? '#1d4e32' : '#e5eeff',
                   borderWidth: filtroActivo === f.value ? 0 : 1,
                   borderColor: '#c3c6d7',
                 }}
@@ -230,7 +230,7 @@ export function ListaReportes() {
 
           {/* Lista */}
           {isLoading && (
-            <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 40 }} />
+            <ActivityIndicator size="large" color="#1d4e32" style={{ marginTop: 40 }} />
           )}
 
           {isError && (
@@ -241,7 +241,7 @@ export function ListaReportes() {
               <TouchableOpacity
                 onPress={() => refetch()}
                 style={{
-                  backgroundColor: '#2563eb',
+                  backgroundColor: '#1d4e32',
                   paddingHorizontal: 20,
                   paddingVertical: 10,
                   borderRadius: 8,
@@ -280,7 +280,7 @@ export function ListaReportes() {
             right: 24,
             width: 56,
             height: 56,
-            backgroundColor: '#004ac6',
+            backgroundColor: '#1d4e32',
             borderRadius: 999,
             alignItems: 'center',
             justifyContent: 'center',
