@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import { PerfilScreen } from '@/src/features/perfil/PerfilScreen';
 
-export default function PerfilScreen() {
-  return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text className="text-xl font-bold">Perfil</Text>
-    </View>
-  );
+export default function PerfilTab() {
+  return <PerfilScreen />;
 }
