@@ -444,7 +444,7 @@ export function FormularioReporte() {
               name="comunidadId"
               render={({ field: { onChange, value } }) => (
                 <View style={{ gap: 8, flexDirection: 'row', flexWrap: 'wrap' }}>
-                  {(comunidades ?? []).map((c) => (
+                  {(comunidades?.data ?? []).map((c) => (
                     <TouchableOpacity
                       key={c.id}
                       onPress={() => onChange(c.id)}
