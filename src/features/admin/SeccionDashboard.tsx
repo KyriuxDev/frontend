@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert,
+} from 'react-native';
 import { Svg, Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useReportes } from '@/src/features/reportes/reporte.queries';
-import { useDashboardStats } from '@/src/features/admin/dashboard.queries';
+import { useDashboardStats, useRecalcularIrsu } from '@/src/features/admin/dashboard.queries';
 import { ReporteResumen, EstadoReporte } from '@/src/features/reportes/reporte.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
 
@@ -40,12 +43,9 @@ function buildPath(pts: { x: number; y: number }[]) {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({
-  label, value, topColor, barWidth, trend, trendColor,
-}: {
+function KpiCard({ label, value, topColor, barWidth }: {
   label: string; value: number | string;
   topColor: string; barWidth: number;
-  trend?: string; trendColor?: string;
 }) {
   return (
     <View style={{
@@ -56,17 +56,12 @@ function KpiCard({
       borderTopWidth: 3, borderTopColor: topColor,
       padding: 16,
     }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-          {label}
-        </Text>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-        <Text style={{ fontSize: 32, fontWeight: '800', color: topColor, letterSpacing: -1 }}>{value}</Text>
-        {trend && (
-          <Text style={{ fontSize: 12, fontWeight: '700', color: trendColor ?? topColor }}>{trend}</Text>
-        )}
-      </View>
+      <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 12 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 32, fontWeight: '800', color: topColor, letterSpacing: -1, marginBottom: 12 }}>
+        {value}
+      </Text>
       <View style={{ height: 3, backgroundColor: '#f1f5f1', borderRadius: 99, overflow: 'hidden' }}>
         <View style={{ height: 3, width: `${barWidth}%` as any, backgroundColor: topColor, borderRadius: 99 }} />
       </View>
@@ -76,33 +71,29 @@ function KpiCard({
 
 // ─── Gráfico IRSU ─────────────────────────────────────────────────────────────
 function IrsuChart({
-  periodo,
-  setPeriodo,
-  puntos,
-  labelsX,
-  maxPunto,
-  maxIrsuValor,
-  isLoading,
+  periodo, setPeriodo, puntos, labelsX,
+  maxPunto, maxIrsuValor, isLoading,
+  onRecalcular, recalculando,
 }: {
-  periodo:      '7D' | '30D' | '90D';
-  setPeriodo:   (p: '7D' | '30D' | '90D') => void;
-  puntos:       { x: number; y: number }[];
-  labelsX:      string[];
-  maxPunto:     { x: number; y: number } | null;
-  maxIrsuValor: number;
-  isLoading:    boolean;
+  periodo:       '7D' | '30D' | '90D';
+  setPeriodo:    (p: '7D' | '30D' | '90D') => void;
+  puntos:        { x: number; y: number }[];
+  labelsX:       string[];
+  maxPunto:      { x: number; y: number } | null;
+  maxIrsuValor:  number;
+  isLoading:     boolean;
+  onRecalcular:  () => void;
+  recalculando:  boolean;
 }) {
   const linePath = buildPath(puntos);
   const areaPath = puntos.length > 0
     ? `${linePath} L${puntos[puntos.length - 1].x},300 L${puntos[0].x},300 Z`
     : '';
 
-  // Etiquetas Y dinámicas basadas en el valor máximo
   const maxLabel = Math.ceil(maxIrsuValor / 30) * 30 || 150;
   const yLabels  = [maxLabel, Math.round(maxLabel * 0.8), Math.round(maxLabel * 0.6),
                     Math.round(maxLabel * 0.4), Math.round(maxLabel * 0.2), 0];
 
-  // Posición del tooltip: si el punto máximo está muy a la derecha, lo movemos a la izquierda
   const tooltipRight = maxPunto && maxPunto.x > 700 ? '55%' : '18%';
 
   return (
@@ -125,7 +116,32 @@ function IrsuChart({
             {periodo === '7D' ? '7 días' : periodo === '30D' ? '30 días' : '90 días'}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
+
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          {/* Botón recalcular */}
+          <TouchableOpacity
+            onPress={onRecalcular}
+            disabled={recalculando}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 12, paddingVertical: 6, borderRadius: 7,
+              backgroundColor: recalculando ? C.verdeHover : C.verde,
+              borderWidth: 1, borderColor: C.verde,
+            }}
+          >
+            {recalculando
+              ? <ActivityIndicator size="small" color={C.verde} />
+              : <Text style={{ fontSize: 13 }}></Text>
+            }
+            <Text style={{
+              fontSize: 11, fontWeight: '700',
+              color: recalculando ? C.verde : '#fff',
+            }}>
+              {recalculando ? 'Calculando...' : 'Recalcular'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Selectores de periodo */}
           {(['7D', '30D', '90D'] as const).map((p) => (
             <TouchableOpacity
               key={p}
@@ -146,24 +162,40 @@ function IrsuChart({
 
       {/* Chart body */}
       <View style={{ padding: 16, height: 280 }}>
-        {/* Y-axis labels */}
         <View style={{ position: 'absolute', left: 16, top: 16, bottom: 32, justifyContent: 'space-between' }}>
           {yLabels.map((l) => (
-            <Text key={l} style={{ fontSize: 10, color: C.textoMuted, width: 28, textAlign: 'right' }}>
-              {l}
-            </Text>
+            <Text key={l} style={{ fontSize: 10, color: C.textoMuted, width: 28, textAlign: 'right' }}>{l}</Text>
           ))}
         </View>
 
-        {/* SVG */}
         <View style={{ marginLeft: 36, marginBottom: 20, flex: 1 }}>
           {isLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <ActivityIndicator color={C.verde} />
             </View>
           ) : puntos.length < 2 ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <Text style={{ color: C.textoMuted, fontSize: 13 }}>Sin datos para este periodo</Text>
+              <TouchableOpacity
+                onPress={onRecalcular}
+                disabled={recalculando}
+                style={{
+                  backgroundColor: C.verde, borderRadius: 8,
+                  paddingHorizontal: 20, paddingVertical: 8,
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                }}
+              >
+                {recalculando
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ fontSize: 14 }}></Text>
+                }
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
+                  {recalculando ? 'Calculando...' : 'Generar datos IRSU'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ color: C.textoMuted, fontSize: 11, textAlign: 'center', maxWidth: 260 }}>
+                Presiona para calcular el índice IRSU de todas las comunidades activas
+              </Text>
             </View>
           ) : (
             <>
@@ -174,40 +206,26 @@ function IrsuChart({
                     <Stop offset="100%" stopColor={C.verde} stopOpacity={0}    />
                   </LinearGradient>
                 </Defs>
-                {/* Grid lines */}
                 {[0, 60, 120, 180, 240, 300].map((y) => (
                   <Path key={y} d={`M0,${y} H1000`} stroke="#f0f4f0" strokeWidth="1" />
                 ))}
-                {/* Area */}
                 <Path d={areaPath} fill="url(#grad)" />
-                {/* Line */}
-                <Path
-                  d={linePath}
-                  fill="none"
-                  stroke={C.verde}
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {/* Puntos cada 2 */}
+                <Path d={linePath} fill="none" stroke={C.verde} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 {puntos.filter((_, i) => i % 2 === 0).map((pt, i) => (
                   <Circle key={i} cx={pt.x} cy={pt.y} r="5" fill={C.verde} stroke="#fff" strokeWidth="2" />
                 ))}
-                {/* Punto máximo en rojo */}
                 {maxPunto && (
                   <Circle cx={maxPunto.x} cy={maxPunto.y} r="6" fill="#dc2626" stroke="#fff" strokeWidth="2" />
                 )}
               </Svg>
 
-              {/* Tooltip del máximo */}
               {maxPunto && maxIrsuValor > 0 && (
                 <View style={{
                   position: 'absolute',
                   right: tooltipRight,
                   top: `${Math.max(5, (maxPunto.y / 300) * 80)}%`,
                   backgroundColor: maxIrsuValor > 100 ? '#dc2626' : maxIrsuValor > 50 ? '#d97706' : C.verde,
-                  borderRadius: 8,
-                  paddingHorizontal: 10, paddingVertical: 6,
+                  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
                 }}>
                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'monospace' }}>
                     IRSU: {maxIrsuValor.toFixed(1)}
@@ -221,7 +239,6 @@ function IrsuChart({
           )}
         </View>
 
-        {/* X-axis labels */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginLeft: 36 }}>
           {labelsX.map((m, i) => (
             <Text key={i} style={{ fontSize: 10, color: C.textoMuted }}>{m}</Text>
@@ -279,23 +296,14 @@ function TablaReportes({ reportes, isLoading }: { reportes: ReporteResumen[]; is
 
   return (
     <View style={{ backgroundColor: C.blanco, borderRadius: 10, borderWidth: 1, borderColor: C.borde, overflow: 'hidden' }}>
-      {/* Header */}
       <View style={{
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingVertical: 14,
         borderBottomWidth: 1, borderBottomColor: C.bordeLight,
       }}>
         <Text style={{ fontSize: 16, fontWeight: '700', color: C.verde }}>Reportes Recientes</Text>
-        <View style={{
-          flexDirection: 'row', alignItems: 'center',
-          borderWidth: 1, borderColor: C.borde, borderRadius: 7,
-          paddingHorizontal: 12, paddingVertical: 6,
-        }}>
-          <Text style={{ fontSize: 12, color: C.textoMuted }}>🔍  Filtrar reportes...</Text>
-        </View>
       </View>
 
-      {/* Encabezado columnas */}
       <View style={{
         flexDirection: 'row', backgroundColor: '#f9fafb',
         paddingHorizontal: 20, paddingVertical: 10,
@@ -308,18 +316,13 @@ function TablaReportes({ reportes, isLoading }: { reportes: ReporteResumen[]; is
           { label: 'GRAVEDAD',  flex: 1   },
           { label: 'ESTADO',    flex: 1.5 },
           { label: 'FECHA',     flex: 1   },
-          { label: 'ACCIÓN',    flex: 0.8 },
         ].map((col) => (
-          <Text
-            key={col.label}
-            style={{ flex: col.flex, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6 }}
-          >
+          <Text key={col.label} style={{ flex: col.flex, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6 }}>
             {col.label}
           </Text>
         ))}
       </View>
 
-      {/* Filas */}
       {isLoading && (
         <View style={{ alignItems: 'center', paddingVertical: 32 }}>
           <ActivityIndicator color={C.verde} />
@@ -327,35 +330,23 @@ function TablaReportes({ reportes, isLoading }: { reportes: ReporteResumen[]; is
       )}
 
       {recientes.map((r, idx) => (
-        <View
-          key={r.id}
-          style={{
-            flexDirection: 'row', alignItems: 'center',
-            paddingHorizontal: 20, paddingVertical: 12,
-            borderBottomWidth: idx < recientes.length - 1 ? 1 : 0,
-            borderBottomColor: C.bordeLight,
-          }}
-        >
+        <View key={r.id} style={{
+          flexDirection: 'row', alignItems: 'center',
+          paddingHorizontal: 20, paddingVertical: 12,
+          borderBottomWidth: idx < recientes.length - 1 ? 1 : 0,
+          borderBottomColor: C.bordeLight,
+        }}>
           <View style={{ flex: 2.5 }}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: C.verde }} numberOfLines={1}>{r.titulo}</Text>
             <Text style={{ fontSize: 11, color: C.textoMuted, marginTop: 1 }}>ID: #RE-{String(r.id).padStart(4, '0')}</Text>
           </View>
-          <View style={{ flex: 1.5 }}>
-            <CatTag categoria={r.categoria} />
-          </View>
+          <View style={{ flex: 1.5 }}><CatTag categoria={r.categoria} /></View>
           <Text style={{ flex: 1.5, fontSize: 13, color: C.textoSub }} numberOfLines={1}>{r.comunidad.nombre}</Text>
-          <View style={{ flex: 1 }}>
-            <Estrellas n={r.gravedad} />
-          </View>
-          <View style={{ flex: 1.5 }}>
-            <ChipEstado estado={r.estado} />
-          </View>
+          <View style={{ flex: 1 }}><Estrellas n={r.gravedad} /></View>
+          <View style={{ flex: 1.5 }}><ChipEstado estado={r.estado} /></View>
           <Text style={{ flex: 1, fontSize: 12, color: C.textoMuted, fontFamily: 'monospace' }}>
             {formatearFechaCorta(r.createdAt)}
           </Text>
-          <TouchableOpacity style={{ flex: 0.8 }}>
-            <Text style={{ fontSize: 18, color: C.textoMuted, textAlign: 'center' }}>⋮</Text>
-          </TouchableOpacity>
         </View>
       ))}
 
@@ -365,7 +356,6 @@ function TablaReportes({ reportes, isLoading }: { reportes: ReporteResumen[]; is
         </View>
       )}
 
-      {/* Footer paginación */}
       <View style={{
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 20, paddingVertical: 10,
@@ -375,15 +365,6 @@ function TablaReportes({ reportes, isLoading }: { reportes: ReporteResumen[]; is
         <Text style={{ fontSize: 12, color: C.textoMuted }}>
           Mostrando {recientes.length} reportes recientes
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity>
-            <Text style={{ fontSize: 20, color: C.textoMuted }}>‹</Text>
-          </TouchableOpacity>
-          <Text style={{ fontSize: 12, color: C.textoMuted, fontFamily: 'monospace' }}>Página 1</Text>
-          <TouchableOpacity>
-            <Text style={{ fontSize: 20, color: C.verde }}>›</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -395,16 +376,23 @@ export function SeccionDashboard() {
 
   const { data: dashData, isLoading: loadingDash } = useDashboardStats(periodo);
   const { data: reportesData, isLoading: loadingReportes } = useReportes({ limit: 100 } as any);
+  const { mutate: recalcular, isPending: recalculando } = useRecalcularIrsu();
 
-  const kpis    = dashData?.kpis;
-  const serie   = dashData?.serie ?? [];
+  const kpis     = dashData?.kpis;
+  const serie    = dashData?.serie ?? [];
   const reportes = reportesData?.data ?? [];
 
   const puntosGrafica = useMemo(() => {
-    if (serie.length < 2) return [];
-    const maxIrsu = Math.max(...serie.map(s => s.irsu), 1);
-    return serie.map((s, i) => ({
-      x: Math.round((i / (serie.length - 1)) * 1000),
+    if (serie.length === 0) return [];
+    
+    // Con un solo punto, duplicamos para poder dibujar una línea plana
+    const serieNormalizada = serie.length === 1
+      ? [serie[0], serie[0]]
+      : serie;
+
+    const maxIrsu = Math.max(...serieNormalizada.map(s => s.irsu), 1);
+    return serieNormalizada.map((s, i) => ({
+      x: Math.round((i / (serieNormalizada.length - 1)) * 1000),
       y: Math.round(300 - (s.irsu / maxIrsu) * 260),
     }));
   }, [serie]);
@@ -412,7 +400,9 @@ export function SeccionDashboard() {
   const labelsX = useMemo(() => {
     if (serie.length === 0) return [];
     const paso  = Math.max(1, Math.floor(serie.length / 6));
-    const items = serie.filter((_, i) => i % paso === 0).slice(0, 7);
+    const items = serie.length === 1
+      ? [serie[0], serie[0]]
+      : serie.filter((_, i) => i % paso === 0).slice(0, 7);
     return items.map(s =>
       new Date(s.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
     );
@@ -423,9 +413,18 @@ export function SeccionDashboard() {
     return puntosGrafica.reduce((max, p) => p.y < max.y ? p : max);
   }, [puntosGrafica]);
 
-  const maxIrsuValor = serie.length > 0
-    ? Math.max(...serie.map(s => s.irsu))
-    : 0;
+  const maxIrsuValor = serie.length > 0 ? Math.max(...serie.map(s => s.irsu)) : 0;
+
+  const handleRecalcular = () => {
+    Alert.alert(
+      'Recalcular IRSU',
+      '¿Calcular el índice IRSU de todas las comunidades activas? Esto puede tardar unos segundos.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Calcular', onPress: () => recalcular() },
+      ]
+    );
+  };
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -467,6 +466,8 @@ export function SeccionDashboard() {
         maxPunto={maxPunto}
         maxIrsuValor={maxIrsuValor}
         isLoading={loadingDash}
+        onRecalcular={handleRecalcular}
+        recalculando={recalculando}
       />
 
       {/* Tabla reportes recientes */}
