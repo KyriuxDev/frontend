@@ -19,6 +19,14 @@ export function useDashboardStats(periodo: '7D' | '30D' | '90D') {
   });
 }
 
+export function useReporteStats() {
+  return useQuery({
+    queryKey: ['reportes', 'stats'],
+    queryFn: () =>
+      api.get('/reportes/stats').then(r => r.data),
+  });
+}
+
 export function useRecalcularIrsu() {
   const qc = useQueryClient();
   return useMutation({
