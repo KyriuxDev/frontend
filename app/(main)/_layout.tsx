@@ -67,6 +67,19 @@ export default function MainLayout() {
           ),
         }}
       />
+      {/* Suprimir rutas dinámicas que no deben ser tabs */}
+      <Tabs.Screen name="reportes/[id]" options={{ href: null }} />
+      <Tabs.Screen name="comunidades/[id]" options={{ href: null }} />
+
+      <Tabs.Screen
+        name="ranking/index"
+        options={{
+          title: 'Ranking',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trophy-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
