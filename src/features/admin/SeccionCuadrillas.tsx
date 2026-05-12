@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, TextInput, Alert, Platform,
@@ -8,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/src/lib/axios';
 import { useAuthStore } from '@/src/store/auth.store';
 import { useOaxacaComunidades, useOaxacaMunicipio } from '@/src/hooks/useOaxaca';
+import { useState, useMemo } from 'react';
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -175,14 +175,24 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
   const [nombre, setNombre]          = useState('');
   const [desc, setDesc]              = useState('');
   const [comunidadSel, setComunidad] = useState<any>(null);
+  const [busqueda, setBusqueda]      = useState('');
   const { mutate, isPending }        = useCrearCuadrilla();
-
+ 
   const { data: comunidadesData, isLoading } = useOaxacaComunidades();
   const comunidades = comunidadesData ?? [];
-
+ 
+  // Filtra según lo que escribe el usuario
+  const comunidadesFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return comunidades;
+    return (comunidades as any[]).filter((c) =>
+      c.nombre.toLowerCase().includes(q)
+    );
+  }, [comunidades, busqueda]);
+ 
   const handleCrear = () => {
-    if (!nombre.trim()) { Alert.alert('Error', 'El nombre es obligatorio'); return; }
-    if (!comunidadSel)  { Alert.alert('Error', 'Selecciona una comunidad'); return; }
+    if (!nombre.trim())  { Alert.alert('Error', 'El nombre es obligatorio'); return; }
+    if (!comunidadSel)   { Alert.alert('Error', 'Selecciona una comunidad'); return; }
     mutate(
       {
         nombre:      nombre.trim(),
@@ -190,20 +200,21 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
         municipioId: comunidadSel.municipio.id,
       },
       {
-        onSuccess: () => { setNombre(''); setDesc(''); setComunidad(null); onClose(); },
-        onError:   (err: any) =>
+        onSuccess: () => { setNombre(''); setDesc(''); setComunidad(null); setBusqueda(''); onClose(); },
+        onError: (err: any) =>
           Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear'),
       }
     );
   };
-
+ 
   return (
     <View style={{
       backgroundColor: C.blanco, borderRadius: 12, padding: 18,
       borderWidth: 1, borderColor: C.borde, marginBottom: 14, gap: 10,
     }}>
       <Text style={{ fontSize: 14, fontWeight: '700', color: C.texto }}>Nueva Cuadrilla</Text>
-
+ 
+      {/* Nombre */}
       <View>
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
           NOMBRE *
@@ -218,7 +229,8 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
           }}
         />
       </View>
-
+ 
+      {/* Descripción */}
       <View>
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
           DESCRIPCIÓN
@@ -233,45 +245,107 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
           }}
         />
       </View>
-
+ 
+      {/* Comunidad con buscador */}
       <View>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 6 }}>
-          COMUNIDAD *
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
+            COMUNIDAD *
+          </Text>
+          {comunidadSel && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              backgroundColor: C.verdeHover, borderRadius: 99,
+              paddingHorizontal: 8, paddingVertical: 2,
+            }}>
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: C.verde }} />
+              <Text style={{ fontSize: 10, fontWeight: '700', color: C.verde }} numberOfLines={1}>
+                {comunidadSel.nombre}
+              </Text>
+            </View>
+          )}
+        </View>
+ 
+        {/* Buscador */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 8,
+          borderWidth: 1, borderColor: C.borde, borderRadius: 8,
+          backgroundColor: '#f9fafb', paddingHorizontal: 10, paddingVertical: 8,
+          marginBottom: 6,
+        }}>
+          <MaterialIcons name="search" size={16} color={C.textoMuted} />
+          <TextInput
+            value={busqueda}
+            onChangeText={setBusqueda}
+            placeholder="Buscar comunidad..."
+            placeholderTextColor={C.textoMuted}
+            style={{ flex: 1, fontSize: 13, color: C.texto }}
+            returnKeyType="search"
+          />
+          {busqueda.length > 0 && (
+            <MaterialIcons
+              name="close"
+              size={16}
+              color={C.textoMuted}
+              onPress={() => setBusqueda('')}
+            />
+          )}
+        </View>
+ 
+        {/* Contador de resultados */}
+        {busqueda.length > 0 && (
+          <Text style={{ fontSize: 11, color: C.textoMuted, marginBottom: 4 }}>
+            {comunidadesFiltradas.length === 0
+              ? `Sin resultados para "${busqueda}"`
+              : `${comunidadesFiltradas.length} resultado${comunidadesFiltradas.length !== 1 ? 's' : ''}`}
+          </Text>
+        )}
+ 
         {isLoading && <ActivityIndicator color={C.verde} />}
-        <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
-          {comunidades.map((c: any) => {
-            const sel = comunidadSel?.id === c.id;
-            return (
-              <TouchableOpacity
-                key={c.id} onPress={() => setComunidad(c)}
-                style={{
-                  padding: 10, borderRadius: 8, marginBottom: 4,
-                  flexDirection: 'row', alignItems: 'center', gap: 8,
-                  borderWidth: sel ? 2 : 1,
-                  borderColor: sel ? C.verde : C.borde,
-                  backgroundColor: sel ? C.verdeHover : C.blanco,
-                }}
-              >
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: sel ? C.verde : C.textoMuted }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: sel ? '700' : '400', color: sel ? C.verde : C.texto }}>
-                    {c.nombre}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: C.textoMuted }}>{c.municipio.nombre}</Text>
-                </View>
-                {sel && <MaterialIcons name="check-circle" size={16} color={C.verde} />}
-              </TouchableOpacity>
-            );
-          })}
-          {!isLoading && comunidades.length === 0 && (
-            <Text style={{ color: C.textoMuted, fontSize: 13, textAlign: 'center', padding: 12 }}>
-              No hay comunidades activas disponibles
-            </Text>
+ 
+        {/* Lista filtrada */}
+        <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+          {comunidadesFiltradas.length === 0 && !isLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 20, gap: 6 }}>
+              <MaterialIcons name="search-off" size={28} color={C.borde} />
+              <Text style={{ fontSize: 12, color: C.textoMuted }}>
+                No hay resultados para "{busqueda}"
+              </Text>
+            </View>
+          ) : (
+            (comunidadesFiltradas as any[]).map((c) => {
+              const sel = comunidadSel?.id === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => { setComunidad(c); setBusqueda(''); }}
+                  style={{
+                    padding: 10, borderRadius: 8, marginBottom: 4,
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    borderWidth: sel ? 2 : 1,
+                    borderColor: sel ? C.verde : C.borde,
+                    backgroundColor: sel ? C.verdeHover : C.blanco,
+                  }}
+                >
+                  <View style={{
+                    width: 8, height: 8, borderRadius: 4,
+                    backgroundColor: sel ? C.verde : C.textoMuted,
+                  }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: sel ? '700' : '400', color: sel ? C.verde : C.texto }}>
+                      {c.nombre}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: C.textoMuted }}>{c.municipio.nombre}</Text>
+                  </View>
+                  {sel && <MaterialIcons name="check-circle" size={16} color={C.verde} />}
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
       </View>
-
+ 
+      {/* Botones */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
         <TouchableOpacity
           onPress={onClose}
@@ -292,6 +366,7 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
     </View>
   );
 }
+ 
 
 // ─── Card cuadrilla ───────────────────────────────────────────────────────────
 

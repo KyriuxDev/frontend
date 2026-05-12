@@ -143,6 +143,38 @@ const MapaLazy = memo(function MapaLazy({ comunidades }: { comunidades: Comunida
   );
 });
 
+const MapaWeb = memo(function MapaWeb({ comunidades }: { comunidades: ComunidadResumen[] }) {
+  return (
+    <View style={{
+      borderRadius: 10, overflow: 'hidden',
+      borderWidth: 1, borderColor: C.borde,
+      backgroundColor: C.blanco, marginBottom: 16,
+    }}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 14, paddingVertical: 12,
+        backgroundColor: C.verde,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="map-outline" size={18} color="#fff" />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>
+            Mapa de calor IRSU
+          </Text>
+        </View>
+        <View style={{
+          backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 99,
+          paddingHorizontal: 8, paddingVertical: 2,
+        }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>EN VIVO</Text>
+        </View>
+      </View>
+      <View style={{ height: 420 }}>
+        <MapaComunidades comunidades={comunidades} />
+      </View>
+    </View>
+  );
+});
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export function ListaComunidades() {
   const { data: todas = [], isLoading, isError, refetch } = useOaxacaComunidades('ACTIVO');
@@ -283,9 +315,11 @@ export function ListaComunidades() {
           </View>
         </View>
 
-        {/* Mapa lazy mobile */}
-        {!isWeb && !isLoading && (todas as ComunidadResumen[]).length > 0 && (
-          <MapaLazy comunidades={todas as ComunidadResumen[]} />
+        {/* Mapa — lazy en móvil, siempre visible en web */}
+        {!isLoading && (todas as ComunidadResumen[]).length > 0 && (
+          isWeb
+            ? <MapaWeb  comunidades={todas as ComunidadResumen[]} />
+            : <MapaLazy comunidades={todas as ComunidadResumen[]} />
         )}
 
         {/* Contador / vacío */}

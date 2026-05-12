@@ -28,6 +28,7 @@ import { useReporteStats } from "./dashboard.queries";
 import { Paginacion } from "@/src/components/pagination";
 import { SeccionCuadrillas } from "@/src/features/admin/SeccionCuadrillas";
 import { useOaxacaComunidades } from "@/src/hooks/useOaxaca";
+import { SeccionAlertas } from '@/src/features/admin/SeccionAlertas';
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -1134,7 +1135,7 @@ export function PanelAdmin() {
 					{tab === "reportes"    && <SeccionReportes />}
 					{tab === "comunidades" && <SeccionComunidades />}
 					{tab === "cuadrillas"  && <SeccionCuadrillas />}
-					{tab === "alertas"     && <Proximamente icon="notifications"   label="Alertas"  />}
+					{tab === 'alertas' && <SeccionAlertas />}
 					{tab === "usuarios"    && <Proximamente icon="manage-accounts" label="Usuarios" />}
 				</View>
 			</View>
