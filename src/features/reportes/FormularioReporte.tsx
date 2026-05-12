@@ -23,6 +23,7 @@ import { Categoria, FotoFile } from "./reporte.types";
 import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
 import { MapView, Marker } from "@/src/components/MapViewWrapper";
+import { subirFotosReporte } from "./reporte.service";
 
 const CATEGORIAS = [
 	{ label: "BACHES Y PAVIMENTO", value: "INFRAESTRUCTURA", emoji: "🕳️" },
@@ -146,14 +147,30 @@ export function FormularioReporte() {
 		setFotos((prev) => prev.filter((f) => f.uri !== uri));
 	}
 
-	const onSubmit = (data: CrearReporteInput) => {
+	const onSubmit = async (data: CrearReporteInput) => {
 		crear(
-			{ ...data, fuente: "APP_MOVIL", fotos },
 			{
+				...data,
+				fuente: "APP_MOVIL",
+			},
+			{
+				onSuccess: async (reporte) => {
+					try {
+						if (fotos.length > 0) {
+							await subirFotosReporte(reporte.id, fotos);
+						}
+
+						Alert.alert("Éxito", "Reporte creado correctamente");
+					} catch (error: any) {
+						Alert.alert("Error", "No se pudieron subir las imágenes");
+					}
+				},
+
 				onError: (err: any) => {
 					const msg =
 						err?.response?.data?.error ??
 						JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
+
 					Alert.alert("Error del servidor", msg);
 				},
 			},
