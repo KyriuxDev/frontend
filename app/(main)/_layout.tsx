@@ -4,11 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/auth.store';
 
 const ROLES_ADMIN = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
+const ROLES_CUADRILLA = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
 
 export default function MainLayout() {
   const usuario = useAuthStore((s) => s.usuario);
   const esAdmin = usuario
     ? ROLES_ADMIN.includes(usuario.rol as typeof ROLES_ADMIN[number])
+    : false;
+
+  const puedeCuadrillas = usuario
+    ? ROLES_CUADRILLA.includes(usuario.rol as typeof ROLES_CUADRILLA[number])
     : false;
 
   const tabBarStyle = Platform.OS === 'web' ? { display: 'none' as const } : undefined;
@@ -64,6 +69,16 @@ export default function MainLayout() {
           href: esAdmin ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="shield-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="cuadrillas/index"
+        options={{
+          title: 'Cuadrillas',
+          href: puedeCuadrillas ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="construct-outline" size={size} color={color} />
           ),
         }}
       />

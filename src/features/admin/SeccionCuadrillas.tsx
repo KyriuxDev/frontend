@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, TextInput, Alert,
+  ActivityIndicator, TextInput, Alert, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,15 +28,17 @@ const C = {
   morado:     '#f3e8ff', moradoText: '#6b21a8', moradoDot: '#9333ea',
 };
 
+const isWeb = Platform.OS === 'web';
+
 type TabCuadrilla = 'cuadrillas' | 'asignaciones';
 type EstadoAsignacion = 'ASIGNADA' | 'EN_CURSO' | 'COMPLETADA' | 'CANCELADA';
 
 function estadoAsignacionCfg(e: EstadoAsignacion) {
   switch (e) {
-    case 'ASIGNADA':   return { bg: C.amber,   text: C.amberText, dot: C.amberDot, label: 'Asignada'   };
-    case 'EN_CURSO':   return { bg: C.azul,    text: C.azulText,  dot: C.azulDot,  label: 'En Curso'   };
-    case 'COMPLETADA': return { bg: C.verdeMid, text: C.verdeText, dot: '#16a34a', label: 'Completada'  };
-    case 'CANCELADA':  return { bg: C.rojo,    text: C.rojoText,  dot: C.rojoDot,  label: 'Cancelada'  };
+    case 'ASIGNADA':   return { bg: C.amber,    text: C.amberText, dot: C.amberDot, label: 'Asignada'   };
+    case 'EN_CURSO':   return { bg: C.azul,     text: C.azulText,  dot: C.azulDot,  label: 'En Curso'   };
+    case 'COMPLETADA': return { bg: C.verdeMid, text: C.verdeText, dot: '#16a34a',  label: 'Completada' };
+    case 'CANCELADA':  return { bg: C.rojo,     text: C.rojoText,  dot: C.rojoDot,  label: 'Cancelada'  };
   }
 }
 
@@ -49,14 +51,23 @@ function useCuadrillas(municipioId?: number) {
   });
 }
 
+// FIX: si no hay municipioId en el store (SUPER_ADMIN), cargamos todas las cuadrillas activas
 function useCuadrillasActivas(municipioId?: number) {
   return useQuery({
     queryKey: ['cuadrillas-sugeridas', municipioId],
-    queryFn: () =>
-      municipioId
-        ? api.get(`/cuadrillas/sugeridas/${municipioId}`).then(r => r.data)
-        : Promise.resolve([]),
-    enabled: !!municipioId,
+    queryFn: () => {
+      if (municipioId) {
+        return api.get(`/cuadrillas/sugeridas/${municipioId}`).then(r => r.data);
+      }
+      // Sin municipioId: traer todas las cuadrillas activas y mapearlas al mismo shape
+      return api.get('/cuadrillas', { params: { activa: true, limit: 100 } }).then(r => {
+        const data = r.data?.data ?? r.data ?? [];
+        return data.map((c: any) => ({
+          ...c,
+          asignacionesActivas: c._count?.asignaciones ?? 0,
+        }));
+      });
+    },
   });
 }
 
@@ -69,14 +80,12 @@ function useAsignaciones(filtros: { cuadrillaId?: number; estado?: string }) {
 }
 
 function useReportesPendientes() {
-  const { data: municipio } = useOaxacaMunicipio();
   return useQuery({
-    queryKey: ['reportes-asignables', municipio?.id],
+    queryKey: ['reportes-asignables'],
     queryFn: () =>
       api.get('/reportes', {
         params: { estado: 'PENDIENTE', limit: 50 },
       }).then(r => r.data),
-    enabled: true,
   });
 }
 
@@ -163,22 +172,17 @@ function StatCard({ label, value, color, icon }: {
 // ─── Formulario nueva cuadrilla ────────────────────────────────────────────────
 
 function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
-  const [nombre, setNombre]         = useState('');
-  const [desc, setDesc]             = useState('');
+  const [nombre, setNombre]          = useState('');
+  const [desc, setDesc]              = useState('');
   const [comunidadSel, setComunidad] = useState<any>(null);
-  const { mutate, isPending }       = useCrearCuadrilla();
+  const { mutate, isPending }        = useCrearCuadrilla();
 
-  const usuario    = useAuthStore(s => s.usuario);
-  const municipioId = (usuario as any)?.municipioId;
-
-  // Filtra comunidades según el rol
   const { data: comunidadesData, isLoading } = useOaxacaComunidades();
-
   const comunidades = comunidadesData ?? [];
 
   const handleCrear = () => {
-    if (!nombre.trim())  { Alert.alert('Error', 'El nombre es obligatorio'); return; }
-    if (!comunidadSel)   { Alert.alert('Error', 'Selecciona una comunidad'); return; }
+    if (!nombre.trim()) { Alert.alert('Error', 'El nombre es obligatorio'); return; }
+    if (!comunidadSel)  { Alert.alert('Error', 'Selecciona una comunidad'); return; }
     mutate(
       {
         nombre:      nombre.trim(),
@@ -187,7 +191,7 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
       },
       {
         onSuccess: () => { setNombre(''); setDesc(''); setComunidad(null); onClose(); },
-        onError: (err: any) =>
+        onError:   (err: any) =>
           Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear'),
       }
     );
@@ -200,7 +204,6 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
     }}>
       <Text style={{ fontSize: 14, fontWeight: '700', color: C.texto }}>Nueva Cuadrilla</Text>
 
-      {/* Nombre */}
       <View>
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
           NOMBRE *
@@ -216,7 +219,6 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
         />
       </View>
 
-      {/* Descripción */}
       <View>
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
           DESCRIPCIÓN
@@ -232,21 +234,17 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
         />
       </View>
 
-      {/* Comunidad */}
       <View>
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 6 }}>
           COMUNIDAD *
         </Text>
-
         {isLoading && <ActivityIndicator color={C.verde} />}
-
         <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
           {comunidades.map((c: any) => {
             const sel = comunidadSel?.id === c.id;
             return (
               <TouchableOpacity
-                key={c.id}
-                onPress={() => setComunidad(c)}
+                key={c.id} onPress={() => setComunidad(c)}
                 style={{
                   padding: 10, borderRadius: 8, marginBottom: 4,
                   flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -255,10 +253,7 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
                   backgroundColor: sel ? C.verdeHover : C.blanco,
                 }}
               >
-                <View style={{
-                  width: 8, height: 8, borderRadius: 4,
-                  backgroundColor: sel ? C.verde : C.textoMuted,
-                }} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: sel ? C.verde : C.textoMuted }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: sel ? '700' : '400', color: sel ? C.verde : C.texto }}>
                     {c.nombre}
@@ -269,7 +264,6 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
               </TouchableOpacity>
             );
           })}
-
           {!isLoading && comunidades.length === 0 && (
             <Text style={{ color: C.textoMuted, fontSize: 13, textAlign: 'center', padding: 12 }}>
               No hay comunidades activas disponibles
@@ -278,7 +272,6 @@ function FormNuevaCuadrilla({ onClose }: { onClose: () => void }) {
         </ScrollView>
       </View>
 
-      {/* Botones */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
         <TouchableOpacity
           onPress={onClose}
@@ -323,14 +316,10 @@ function CardCuadrilla({ cuadrilla }: { cuadrilla: any }) {
             {cuadrilla.municipio?.nombre}
           </Text>
         </View>
-
-        {/* Carga */}
         <View style={{ alignItems: 'center', gap: 2 }}>
           <Text style={{ fontSize: 20, fontWeight: '800', color: carga }}>{activas}</Text>
           <Text style={{ fontSize: 9, color: C.textoMuted, fontWeight: '600' }}>ACTIVAS</Text>
         </View>
-
-        {/* Estado activa/inactiva */}
         <TouchableOpacity
           onPress={() =>
             Alert.alert(
@@ -349,10 +338,7 @@ function CardCuadrilla({ cuadrilla }: { cuadrilla: any }) {
             borderWidth: 1, borderColor: cuadrilla.activa ? '#16a34a' : C.borde,
           }}
         >
-          <Text style={{
-            fontSize: 11, fontWeight: '700',
-            color: cuadrilla.activa ? C.verdeText : C.textoMuted,
-          }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: cuadrilla.activa ? C.verdeText : C.textoMuted }}>
             {cuadrilla.activa ? '✓ Activa' : '— Inactiva'}
           </Text>
         </TouchableOpacity>
@@ -361,18 +347,26 @@ function CardCuadrilla({ cuadrilla }: { cuadrilla: any }) {
   );
 }
 
-// ─── Modal asignar cuadrilla ──────────────────────────────────────────────────
+// ─── Sección de asignación (inline, reemplaza al modal) ───────────────────────
+// FIX: en lugar de un ScrollView anidado que causa problemas en web,
+// mostramos esto como una sección expandible inline
 
-function ModalAsignar({ onClose, municipioId }: { onClose: () => void; municipioId?: number }) {
+function SeccionAsignar({ onClose, municipioId }: { onClose: () => void; municipioId?: number }) {
   const [cuadrillaId, setCuadrillaId] = useState<number | null>(null);
   const [reporteId, setReporteId]     = useState<number | null>(null);
   const [nota, setNota]               = useState('');
 
-  const { data: sugeridas }           = useCuadrillasActivas(municipioId);
-  const { data: reportesData }        = useReportesPendientes();
-  const { mutate, isPending }         = useAsignarCuadrilla();
+  // FIX: useCuadrillasActivas ahora funciona sin municipioId
+  const { data: sugeridas, isLoading: loadCuadrillas } = useCuadrillasActivas(municipioId);
+  const { data: reportesData, isLoading: loadReportes } = useReportesPendientes();
+  const { mutate, isPending } = useAsignarCuadrilla();
 
-  const reportes = reportesData?.data ?? [];
+  const reportes = (reportesData?.data ?? [])
+    .sort((a: any, b: any) => b.gravedad - a.gravedad)
+    .slice(0, 15);
+
+  const cuadrillaSeleccionada = (sugeridas ?? []).find((c: any) => c.id === cuadrillaId);
+  const reporteSeleccionado   = reportes.find((r: any) => r.id === reporteId);
 
   const handleAsignar = () => {
     if (!cuadrillaId || !reporteId) {
@@ -393,23 +387,52 @@ function ModalAsignar({ onClose, municipioId }: { onClose: () => void; municipio
   };
 
   return (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-      <View style={{
-        backgroundColor: C.blanco, borderRadius: 12, padding: 18,
-        borderWidth: 1, borderColor: C.borde, marginBottom: 14, gap: 12,
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: C.verde }}>Asignar Cuadrilla</Text>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialIcons name="close" size={22} color={C.textoMuted} />
-          </TouchableOpacity>
-        </View>
+    <View style={{
+      backgroundColor: C.blanco, borderRadius: 12, padding: 18,
+      borderWidth: 1, borderColor: C.borde, marginBottom: 14, gap: 14,
+    }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: C.verde }}>Asignar Cuadrilla</Text>
+        <TouchableOpacity onPress={onClose}>
+          <MaterialIcons name="close" size={22} color={C.textoMuted} />
+        </TouchableOpacity>
+      </View>
 
-        {/* Cuadrillas sugeridas */}
-        <View>
-          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 8 }}>
-            CUADRILLA (ordenadas por disponibilidad)
+      {/* Resumen de selección */}
+      {(cuadrillaId || reporteId) && (
+        <View style={{
+          backgroundColor: C.verdeHover, borderRadius: 8, padding: 10,
+          borderWidth: 1, borderColor: '#b8e0c5', gap: 4,
+        }}>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
+            SELECCIÓN ACTUAL
           </Text>
+          <Text style={{ fontSize: 12, color: C.texto }}>
+            Cuadrilla: {cuadrillaSeleccionada ? cuadrillaSeleccionada.nombre : '—'}
+          </Text>
+          <Text style={{ fontSize: 12, color: C.texto }}>
+            Reporte: {reporteSeleccionado ? reporteSeleccionado.titulo : '—'}
+          </Text>
+        </View>
+      )}
+
+      {/* Cuadrillas */}
+      <View>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 8 }}>
+          CUADRILLA (ordenadas por disponibilidad)
+        </Text>
+        {loadCuadrillas && <ActivityIndicator color={C.verde} style={{ marginVertical: 8 }} />}
+        {!loadCuadrillas && (sugeridas ?? []).length === 0 && (
+          <View style={{
+            backgroundColor: C.rojo, borderRadius: 8, padding: 10,
+          }}>
+            <Text style={{ fontSize: 12, color: C.rojoText, fontWeight: '600' }}>
+              No hay cuadrillas activas. Activa al menos una cuadrilla primero.
+            </Text>
+          </View>
+        )}
+        <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
           {(sugeridas ?? []).map((c: any) => {
             const seleccionada = cuadrillaId === c.id;
             const color = c.asignacionesActivas === 0 ? '#16a34a' : c.asignacionesActivas < 3 ? C.amberDot : C.rojoDot;
@@ -426,94 +449,103 @@ function ModalAsignar({ onClose, municipioId }: { onClose: () => void; municipio
               >
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
                 <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.texto }}>{c.nombre}</Text>
-                <Text style={{ fontSize: 11, color: C.textoMuted }}>{c.asignacionesActivas} activas</Text>
+                <Text style={{ fontSize: 11, color: C.textoMuted }}>{c.asignacionesActivas ?? 0} activas</Text>
                 {seleccionada && <MaterialIcons name="check-circle" size={18} color={C.verde} />}
               </TouchableOpacity>
             );
           })}
-        </View>
-
-        {/* Reportes pendientes */}
-        <View>
-          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 8 }}>
-            REPORTE A ATENDER (ordenados por gravedad)
-          </Text>
-          {reportes
-            .sort((a: any, b: any) => b.gravedad - a.gravedad)
-            .slice(0, 15)
-            .map((r: any) => {
-              const seleccionado = reporteId === r.id;
-              return (
-                <TouchableOpacity
-                  key={r.id} onPress={() => setReporteId(r.id)}
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 10,
-                    padding: 10, borderRadius: 8, marginBottom: 4,
-                    borderWidth: seleccionado ? 2 : 1,
-                    borderColor: seleccionado ? C.verde : C.borde,
-                    backgroundColor: seleccionado ? C.verdeHover : C.blanco,
-                  }}
-                >
-                  <View style={{
-                    width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: r.gravedad >= 4 ? C.rojo : r.gravedad >= 3 ? C.amber : C.verdeMid,
-                  }}>
-                    <Text style={{
-                      fontSize: 12, fontWeight: '800',
-                      color: r.gravedad >= 4 ? C.rojoText : r.gravedad >= 3 ? C.amberText : C.verdeText,
-                    }}>
-                      {r.gravedad}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: C.texto }} numberOfLines={1}>
-                      {r.titulo}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: C.textoMuted }}>{r.comunidad?.nombre}</Text>
-                  </View>
-                  {seleccionado && <MaterialIcons name="check-circle" size={18} color={C.verde} />}
-                </TouchableOpacity>
-              );
-            })
-          }
-          {reportes.length === 0 && (
-            <Text style={{ color: C.textoMuted, fontSize: 13, textAlign: 'center', padding: 16 }}>
-              No hay reportes pendientes sin asignación
-            </Text>
-          )}
-        </View>
-
-        {/* Nota */}
-        <View>
-          <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
-            NOTA (opcional)
-          </Text>
-          <TextInput
-            value={nota} onChangeText={setNota}
-            placeholder="Instrucciones específicas para la cuadrilla..."
-            placeholderTextColor={C.textoMuted}
-            multiline numberOfLines={2}
-            style={{
-              borderWidth: 1, borderColor: C.borde, borderRadius: 8,
-              padding: 10, fontSize: 13, color: C.texto, backgroundColor: '#f9fafb',
-              minHeight: 60, textAlignVertical: 'top',
-            }}
-          />
-        </View>
-
-        <TouchableOpacity
-          onPress={handleAsignar} disabled={isPending || !cuadrillaId || !reporteId}
-          style={{
-            padding: 14, borderRadius: 10, alignItems: 'center',
-            backgroundColor: (!cuadrillaId || !reporteId) ? '#d1fae5' : C.verde,
-          }}
-        >
-          {isPending ? <ActivityIndicator color="#fff" /> : (
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Confirmar Asignación</Text>
-          )}
-        </TouchableOpacity>
+        </ScrollView>
       </View>
-    </ScrollView>
+
+      {/* Reportes pendientes */}
+      <View>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 8 }}>
+          REPORTE A ATENDER (ordenados por gravedad)
+        </Text>
+        {loadReportes && <ActivityIndicator color={C.verde} style={{ marginVertical: 8 }} />}
+        {!loadReportes && reportes.length === 0 && (
+          <View style={{ backgroundColor: C.amber, borderRadius: 8, padding: 10 }}>
+            <Text style={{ fontSize: 12, color: C.amberText, fontWeight: '600' }}>
+              No hay reportes pendientes sin asignación.
+            </Text>
+          </View>
+        )}
+        <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+          {reportes.map((r: any) => {
+            const seleccionado = reporteId === r.id;
+            return (
+              <TouchableOpacity
+                key={r.id} onPress={() => setReporteId(r.id)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10,
+                  padding: 10, borderRadius: 8, marginBottom: 4,
+                  borderWidth: seleccionado ? 2 : 1,
+                  borderColor: seleccionado ? C.verde : C.borde,
+                  backgroundColor: seleccionado ? C.verdeHover : C.blanco,
+                }}
+              >
+                <View style={{
+                  width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: r.gravedad >= 4 ? C.rojo : r.gravedad >= 3 ? C.amber : C.verdeMid,
+                }}>
+                  <Text style={{
+                    fontSize: 12, fontWeight: '800',
+                    color: r.gravedad >= 4 ? C.rojoText : r.gravedad >= 3 ? C.amberText : C.verdeText,
+                  }}>
+                    {r.gravedad}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: C.texto }} numberOfLines={1}>
+                    {r.titulo}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: C.textoMuted }}>{r.comunidad?.nombre}</Text>
+                </View>
+                {seleccionado && <MaterialIcons name="check-circle" size={18} color={C.verde} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Nota */}
+      <View>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, marginBottom: 4 }}>
+          NOTA (opcional)
+        </Text>
+        <TextInput
+          value={nota} onChangeText={setNota}
+          placeholder="Instrucciones específicas para la cuadrilla..."
+          placeholderTextColor={C.textoMuted}
+          multiline numberOfLines={2}
+          style={{
+            borderWidth: 1, borderColor: C.borde, borderRadius: 8,
+            padding: 10, fontSize: 13, color: C.texto, backgroundColor: '#f9fafb',
+            minHeight: 60, textAlignVertical: 'top',
+          }}
+        />
+      </View>
+
+      {/* Botón confirmar */}
+      <TouchableOpacity
+        onPress={handleAsignar}
+        disabled={isPending || !cuadrillaId || !reporteId}
+        style={{
+          padding: 14, borderRadius: 10, alignItems: 'center',
+          backgroundColor: (!cuadrillaId || !reporteId) ? '#d1fae5' : C.verde,
+          opacity: isPending ? 0.7 : 1,
+        }}
+      >
+        {isPending ? <ActivityIndicator color="#fff" /> : (
+          <Text style={{
+            color: (!cuadrillaId || !reporteId) ? C.textoMuted : '#fff',
+            fontWeight: '700', fontSize: 15,
+          }}>
+            Confirmar Asignación
+          </Text>
+        )}
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -535,7 +567,6 @@ function FilaAsignacion({ asignacion }: { asignacion: any }) {
         onPress={() => setOpen(!open)}
         style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}
       >
-        {/* Gravedad del reporte */}
         <View style={{
           width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
           backgroundColor: asignacion.reporte.gravedad >= 4 ? '#fee2e2' : asignacion.reporte.gravedad >= 3 ? C.amber : C.verdeMid,
@@ -569,7 +600,6 @@ function FilaAsignacion({ asignacion }: { asignacion: any }) {
           borderTopWidth: 1, borderTopColor: C.bordeLight,
           padding: 12, backgroundColor: '#fafcfa', gap: 10,
         }}>
-          {/* Info de la asignación */}
           {asignacion.nota && (
             <View style={{ backgroundColor: C.amber, borderRadius: 6, padding: 10 }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: C.amberText, marginBottom: 2 }}>NOTA</Text>
@@ -628,13 +658,14 @@ function FilaAsignacion({ asignacion }: { asignacion: any }) {
 // ─── SeccionCuadrillas (principal) ────────────────────────────────────────────
 
 export function SeccionCuadrillas() {
-  const [tab, setTab]                   = useState<TabCuadrilla>('cuadrillas');
-  const [mostrarForm, setMostrarForm]   = useState(false);
+  const [tab, setTab]                       = useState<TabCuadrilla>('cuadrillas');
+  const [mostrarForm, setMostrarForm]       = useState(false);
   const [mostrarAsignar, setMostrarAsignar] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined);
+  const [filtroEstado, setFiltroEstado]     = useState<string | undefined>(undefined);
 
   const usuario     = useAuthStore(s => s.usuario);
-  const municipioId = (usuario as any)?.municipioId;
+  // FIX: municipioId puede no existir en el store para SUPER_ADMIN — se pasa undefined
+  const municipioId = (usuario as any)?.municipioId as number | undefined;
 
   const { data: cuadrillasData,   isLoading: loadCuadrillas   } = useCuadrillas(municipioId);
   const { data: asignacionesData, isLoading: loadAsignaciones } = useAsignaciones({ estado: filtroEstado });
@@ -653,6 +684,7 @@ export function SeccionCuadrillas() {
     { key: 'asignaciones', label: 'Asignaciones', icon: 'assignment-turned-in' },
   ];
 
+  // FIX: filtros como chips horizontales con altura fija para web
   const FILTROS_ESTADO = [
     { label: 'Todas',      value: undefined      },
     { label: 'Asignada',   value: 'ASIGNADA'     },
@@ -666,9 +698,9 @@ export function SeccionCuadrillas() {
 
       {/* Stats */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <StatCard label="Cuadrillas Activas" value={activas}      color={C.verde}      icon="engineering"           />
-        <StatCard label="Inactivas"          value={inactivas}    color={C.textoMuted} icon="do-not-disturb-on"     />
-        <StatCard label="En Trabajo"         value={asignActivas} color={C.azulDot}    icon="assignment-turned-in"  />
+        <StatCard label="Cuadrillas Activas" value={activas}      color={C.verde}      icon="engineering"          />
+        <StatCard label="Inactivas"          value={inactivas}    color={C.textoMuted} icon="do-not-disturb-on"    />
+        <StatCard label="En Trabajo"         value={asignActivas} color={C.azulDot}    icon="assignment-turned-in" />
       </View>
 
       {/* Tabs */}
@@ -681,7 +713,7 @@ export function SeccionCuadrillas() {
           return (
             <TouchableOpacity
               key={t.key}
-              onPress={() => setTab(t.key)}
+              onPress={() => { setTab(t.key); setMostrarAsignar(false); setMostrarForm(false); }}
               style={{
                 flex: 1, flexDirection: 'row', alignItems: 'center',
                 justifyContent: 'center', gap: 6, paddingVertical: 8,
@@ -700,7 +732,6 @@ export function SeccionCuadrillas() {
       {/* ── Tab Cuadrillas ── */}
       {tab === 'cuadrillas' && (
         <ScrollView showsVerticalScrollIndicator={false}>
-
           <TouchableOpacity
             onPress={() => setMostrarForm(!mostrarForm)}
             style={{
@@ -715,11 +746,8 @@ export function SeccionCuadrillas() {
             </Text>
           </TouchableOpacity>
 
-          {mostrarForm && (
-            <FormNuevaCuadrilla onClose={() => setMostrarForm(false)} />
-          )}
+          {mostrarForm && <FormNuevaCuadrilla onClose={() => setMostrarForm(false)} />}
 
-          {/* Encabezado tabla */}
           <View style={{
             flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8,
             backgroundColor: '#f9fafb', borderRadius: 8, marginBottom: 8,
@@ -733,9 +761,7 @@ export function SeccionCuadrillas() {
             </Text>
           </View>
 
-          {loadCuadrillas && (
-            <ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />
-          )}
+          {loadCuadrillas && <ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />}
 
           {!loadCuadrillas && cuadrillas.length === 0 && (
             <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
@@ -744,9 +770,7 @@ export function SeccionCuadrillas() {
             </View>
           )}
 
-          {cuadrillas.map((c: any) => (
-            <CardCuadrilla key={c.id} cuadrilla={c} />
-          ))}
+          {cuadrillas.map((c: any) => <CardCuadrilla key={c.id} cuadrilla={c} />)}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -756,6 +780,7 @@ export function SeccionCuadrillas() {
       {tab === 'asignaciones' && (
         <ScrollView showsVerticalScrollIndicator={false}>
 
+          {/* Botón asignar */}
           <TouchableOpacity
             onPress={() => setMostrarAsignar(!mostrarAsignar)}
             style={{
@@ -770,33 +795,40 @@ export function SeccionCuadrillas() {
             </Text>
           </TouchableOpacity>
 
+          {/* Sección asignar (inline, sin modal) */}
           {mostrarAsignar && (
-            <ModalAsignar onClose={() => setMostrarAsignar(false)} />
+            <SeccionAsignar
+              onClose={() => setMostrarAsignar(false)}
+              municipioId={municipioId}
+            />
           )}
 
-          {/* Filtros estado */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8, paddingRight: 8 }}>
-              {FILTROS_ESTADO.map(f => {
-                const activo = filtroEstado === f.value;
-                return (
-                  <TouchableOpacity
-                    key={String(f.value)}
-                    onPress={() => setFiltroEstado(f.value)}
-                    style={{
-                      paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99,
-                      backgroundColor: activo ? C.verde : C.blanco,
-                      borderWidth: 1, borderColor: activo ? C.verde : C.borde,
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? '#fff' : C.textoSub }}>
-                      {f.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
+          {/* FIX: filtros como chips en fila flex-wrap — no ScrollView horizontal en web */}
+          <View style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginBottom: 12,
+          }}>
+            {FILTROS_ESTADO.map(f => {
+              const activo = filtroEstado === f.value;
+              return (
+                <TouchableOpacity
+                  key={String(f.value)}
+                  onPress={() => setFiltroEstado(f.value)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99,
+                    backgroundColor: activo ? C.verde : C.blanco,
+                    borderWidth: 1, borderColor: activo ? C.verde : C.borde,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? '#fff' : C.textoSub }}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           {/* Encabezado tabla */}
           <View style={{
@@ -812,9 +844,7 @@ export function SeccionCuadrillas() {
             </Text>
           </View>
 
-          {loadAsignaciones && (
-            <ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />
-          )}
+          {loadAsignaciones && <ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />}
 
           {!loadAsignaciones && asignaciones.length === 0 && (
             <View style={{ alignItems: 'center', paddingVertical: 48, gap: 10 }}>
@@ -823,9 +853,7 @@ export function SeccionCuadrillas() {
             </View>
           )}
 
-          {asignaciones.map((a: any) => (
-            <FilaAsignacion key={a.id} asignacion={a} />
-          ))}
+          {asignaciones.map((a: any) => <FilaAsignacion key={a.id} asignacion={a} />)}
 
           <View style={{ height: 40 }} />
         </ScrollView>
