@@ -13,6 +13,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'expo-router';
 import { loginSchema, LoginInput } from './auth.schema';
 import { useLogin } from './auth.queries';
+import { Ionicons } from '@expo/vector-icons';
+
 
 export function LoginForm() {
   const { mutate: iniciarSesion, isPending, error } = useLogin();
@@ -58,7 +60,7 @@ export function LoginForm() {
               elevation: 4,
             }}
           >
-            <Text style={{ fontSize: 32 }}>🏛️</Text>
+            <Text style={{ fontSize: 32 }}><Ionicons name="business-outline" size={30} color="#FFFFFF" /></Text>
           </View>
           <Text
             style={{
@@ -244,7 +246,7 @@ export function LoginForm() {
                 gap: 8,
               }}
             >
-              <Text style={{ fontSize: 16 }}>👤</Text>
+              <Text style={{ fontSize: 16 }}></Text>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30' }}>
                 Continuar como invitado
               </Text>

@@ -12,6 +12,7 @@ import { useReportes } from './reporte.queries';
 import { ReporteResumen, Categoria, EstadoReporte } from './reporte.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
 import { getImageUrl } from '@/src/utils/getImageUrl';
+import { Ionicons } from '@expo/vector-icons';
 
 const FILTROS: { label: string; value: Categoria | 'TODOS' }[] = [
   { label: 'Todos',           value: 'TODOS' },
@@ -170,10 +171,10 @@ export function ListaReportes() {
         </Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity style={{ padding: 8, borderRadius: 999 }}>
-            <Text style={{ fontSize: 20 }}>🔍</Text>
+            <Text style={{ fontSize: 20 }}><Ionicons name="search-outline" size={20} color="#737686" /></Text>
           </TouchableOpacity>
           <TouchableOpacity style={{ padding: 8, borderRadius: 999 }}>
-            <Text style={{ fontSize: 20 }}>🔔</Text>
+            <Text style={{ fontSize: 20 }}><Ionicons name="notifications-outline" size={20} color="#64748b" /></Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -245,7 +246,7 @@ export function ListaReportes() {
 
           {!isLoading && !isError && data?.data.length === 0 && (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ fontSize: 40 }}>📋</Text>
+              <Text style={{ fontSize: 40 }}></Text>
               <Text style={{ fontSize: 16, color: '#737686', marginTop: 8 }}>
                 No hay reportes todavía
               </Text>

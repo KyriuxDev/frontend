@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/auth.store';
 
 const ROLES_ADMIN = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
@@ -10,7 +11,6 @@ export default function MainLayout() {
     ? ROLES_ADMIN.includes(usuario.rol as typeof ROLES_ADMIN[number])
     : false;
 
-  // En web ocultamos completamente el tab bar — la navegación la maneja el sidebar del admin
   const tabBarStyle = Platform.OS === 'web' ? { display: 'none' as const } : undefined;
 
   return (
@@ -21,15 +21,50 @@ export default function MainLayout() {
         tabBarStyle,
       }}
     >
-      <Tabs.Screen name="reportes/index"    options={{ title: 'Reportes'    }} />
-      <Tabs.Screen name="comunidades/index" options={{ title: 'Comunidades' }} />
-      <Tabs.Screen name="alertas/index"     options={{ title: 'Alertas'     }} />
-      <Tabs.Screen name="perfil/index"      options={{ title: 'Perfil'      }} />
+      <Tabs.Screen
+        name="reportes/index"
+        options={{
+          title: 'Reportes',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="document-text-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="comunidades/index"
+        options={{
+          title: 'Comunidades',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="alertas/index"
+        options={{
+          title: 'Alertas',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="perfil/index"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="admin/index"
         options={{
           title: 'Admin',
           href: esAdmin ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

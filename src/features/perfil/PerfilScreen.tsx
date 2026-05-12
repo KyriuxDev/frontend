@@ -14,6 +14,7 @@ import { formatearFechaCorta } from '@/src/utils/formatDate';
 import { getImageUrl } from '@/src/utils/getImageUrl';
 import type { ComunidadUsuario } from '@/src/features/auth/auth.types';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 const PRIMARY = '#1D4E32';
 const ACCENT  = '#C2410C';
@@ -125,7 +126,7 @@ function Avatar({
         alignItems: 'center', justifyContent: 'center',
         borderWidth: 2, borderColor: '#fff',
       }}>
-        <Text style={{ color: '#fff', fontSize: 12 }}>✏️</Text>
+        <Text style={{ color: '#fff', fontSize: 12 }}><Ionicons name="pencil-outline" size={20} color="#737686" /></Text>
       </View>
     </TouchableOpacity>
   );
@@ -379,7 +380,7 @@ export function PerfilScreen() {
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ba1a1a' }}>🚪 Cerrar sesión</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#ba1a1a' }}> Cerrar sesión</Text>
           </TouchableOpacity>
 
           <Text style={{ textAlign: 'center', fontSize: 12, color: '#c3c6d7', marginTop: 16 }}>

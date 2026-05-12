@@ -23,12 +23,13 @@ import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
 import { MapView, Marker } from "@/src/components/MapViewWrapper";
 import { api } from "@/src/lib/axios";
+import { Ionicons } from '@expo/vector-icons';
 
 const CATEGORIAS = [
-	{ label: "BACHES Y PAVIMENTO", value: "INFRAESTRUCTURA", emoji: "🕳️" },
-	{ label: "SEÑALIZACIÓN", value: "VIALIDAD", emoji: "🚦" },
-	{ label: "BLOQUEOS", value: "BLOQUEOS", emoji: "🚧" },
-	{ label: "SEGURIDAD", value: "SEGURIDAD", emoji: "🔒" },
+  { label: 'BACHES Y PAVIMENTO', value: 'INFRAESTRUCTURA', icon: 'construct-outline' },
+  { label: 'SEÑALIZACIÓN',       value: 'VIALIDAD',        icon: 'flag-outline'      },
+  { label: 'BLOQUEOS',           value: 'BLOQUEOS',        icon: 'alert-circle-outline' },
+  { label: 'SEGURIDAD',          value: 'SEGURIDAD',       icon: 'shield-outline'    },
 ];
 
 export function FormularioReporte() {
@@ -244,7 +245,7 @@ export function FormularioReporte() {
 					>
 						IRSU
 					</Text>
-					<Text style={{ fontSize: 20 }}>🔔</Text>
+					<Text style={{ fontSize: 20 }}><Ionicons name="notifications-outline" size={20} color="#64748b" /></Text>
 				</View>
 
 				<View style={{ padding: 20, gap: 16 }}>
@@ -307,7 +308,7 @@ export function FormularioReporte() {
 													gap: 4,
 												}}
 											>
-												<Text style={{ fontSize: 28 }}>{cat.emoji}</Text>
+												<Text style={{ fontSize: 28 }}><Ionicons name={cat.icon as any} size={28} color={activa ? '#004ac6' : '#434655'} /></Text>
 												<Text
 													style={{
 														fontSize: 11,
@@ -566,7 +567,7 @@ export function FormularioReporte() {
 									opacity: fotos.length >= 5 ? 0.5 : 1,
 								}}
 							>
-								<Text style={{ fontSize: 16 }}>📷</Text>
+								<Text style={{ fontSize: 16 }}><Ionicons name="camera-outline" size={16} color="#737686" /></Text>
 								<Text
 									style={{ fontSize: 13, fontWeight: "600", color: "#737686" }}
 								>
@@ -590,7 +591,7 @@ export function FormularioReporte() {
 									opacity: fotos.length >= 5 ? 0.5 : 1,
 								}}
 							>
-								<Text style={{ fontSize: 16 }}>🖼️</Text>
+								<Text style={{ fontSize: 16 }}><Ionicons name="image-outline" size={16} color="#737686" /></Text>
 								<Text
 									style={{ fontSize: 13, fontWeight: "600", color: "#737686" }}
 								>
@@ -678,7 +679,7 @@ export function FormularioReporte() {
 							}}
 						>
 							<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-								<Text style={{ fontSize: 16 }}>📍</Text>
+								<Text style={{ fontSize: 16 }}><Ionicons name="location-outline" size={16} color="#0b1c30" /></Text>
 								<Text style={{ fontSize: 14, fontWeight: "600", color: "#0b1c30" }}>
 									Confirmar Ubicación
 								</Text>
@@ -752,7 +753,7 @@ export function FormularioReporte() {
 								</>
 							) : (
 								<View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
-									<Text style={{ fontSize: 36 }}>🗺️</Text>
+									<Text style={{ fontSize: 36 }}><Ionicons name="map-outline" size={36} color="#737686" /></Text>
 									<Text style={{ fontSize: 12, color: "#737686" }}>
 										Toca para seleccionar ubicación
 									</Text>
@@ -760,7 +761,7 @@ export function FormularioReporte() {
 							)}
 						</TouchableOpacity>
 						<Text style={{ fontSize: 12, color: "#737686", marginTop: 8 }}>
-							ℹ️ Puedes mover el mapa para ajustar la ubicación exacta.
+							<Ionicons name="information-circle-outline" size={14} color="#737686" /> Puedes mover el mapa para ajustar la ubicación exacta.
 						</Text>
 					</View>
 
@@ -795,7 +796,7 @@ export function FormularioReporte() {
 								<Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
 									Enviar Reporte
 								</Text>
-								<Text style={{ fontSize: 18 }}>📤</Text>
+								<Text style={{ fontSize: 18 }}><Ionicons name="send-outline" size={18} color="#fff" /></Text>
 							</>
 						)}
 					</TouchableOpacity>

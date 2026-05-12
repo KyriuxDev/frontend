@@ -13,7 +13,7 @@ import { EstadoReporte, Categoria } from './reporte.types';
 import { formatearFecha } from '@/src/utils/formatDate';
 import { useAuthStore } from '@/src/store/auth.store';
 import { getImageUrl } from '@/src/utils/getImageUrl';
-
+import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 function colorCategoria(categoria: Categoria) {
@@ -119,7 +119,7 @@ export function DetalleReporte({ id }: Props) {
             </Text>
           </View>
           <TouchableOpacity>
-            <Text style={{ fontSize: 20, color: '#64748b' }}>⋮</Text>
+            <Text style={{ fontSize: 20, color: '#64748b' }}><Ionicons name="ellipsis-vertical" size={20} color="#64748b" /></Text>
           </TouchableOpacity>
         </View>
 
@@ -153,7 +153,7 @@ export function DetalleReporte({ id }: Props) {
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontSize: 48 }}>📋</Text>
+            <Text style={{ fontSize: 48 }}><Ionicons name="clipboard-outline" size={48} color="#737686" /></Text>
             <Text style={{ color: '#737686', marginTop: 8 }}>Sin fotos</Text>
           </View>
         )}
@@ -239,7 +239,7 @@ export function DetalleReporte({ id }: Props) {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontSize: 16 }}>👍</Text>
+                <Text style={{ fontSize: 16 }}><Ionicons name="thumbs-up-outline" size={16} color={yaVote ? '#1d4e32' : '#fff'} /></Text>
                 <Text style={{ color: yaVote ? '#1d4e32' : '#ffffff', fontWeight: '600', fontSize: 14 }}>
                   {yaVote ? 'Votado' : 'Votar'} ({totalVotos})
                 </Text>
@@ -289,7 +289,7 @@ export function DetalleReporte({ id }: Props) {
                 }}
               >
                 <View style={{ backgroundColor: '#dbeafe', padding: 8, borderRadius: 999 }}>
-                  <Text style={{ fontSize: 16 }}>⚠️</Text>
+                  <Text style={{ fontSize: 16 }}><Ionicons name="warning-outline" size={16} color="#1d4ed8" /></Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30' }}>

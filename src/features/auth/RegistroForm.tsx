@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'expo-router';
 import { registroSchema, RegistroInput } from './auth.schema';
 import { useRegistro } from './auth.queries';
+import { Ionicons } from '@expo/vector-icons';
 
 export function RegistroForm() {
   const { mutate: registrarse, isPending, error } = useRegistro();
@@ -262,7 +263,7 @@ export function RegistroForm() {
                 gap: 8,
                 }}
             >
-                <Text style={{ fontSize: 16 }}>👤</Text>
+                <Text style={{ fontSize: 16 }}><Ionicons name="person-outline" size={20} color="#737686" /></Text>
                 <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30' }}>
                 Continuar como invitado
                 </Text>
