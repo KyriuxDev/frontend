@@ -1,11 +1,12 @@
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Platform,
+  ActivityIndicator, Platform, TextInput,
 } from 'react-native';
-import { useComunidades } from './comunidad.queries';
+import { useState, useMemo } from 'react';
 import { ComunidadResumen } from './comunidad.types';
 import MapaComunidades from './MapaComunidades';
 import { useOaxacaComunidades } from '@/src/hooks/useOaxaca';
+import { Ionicons } from '@expo/vector-icons';
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -26,11 +27,27 @@ const C = {
 
 const isWeb = Platform.OS === 'web';
 
+// ─── Tipos filtro ─────────────────────────────────────────────────────────────
+type FiltroNivel = 'TODOS' | 'CRITICO' | 'ALERTA' | 'ESTABLE';
+
+const FILTROS: { label: string; value: FiltroNivel }[] = [
+  { label: 'Todas',   value: 'TODOS'   },
+  { label: 'Crítico', value: 'CRITICO' },
+  { label: 'Alerta',  value: 'ALERTA'  },
+  { label: 'Estable', value: 'ESTABLE' },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function irsuColor(v: number) {
   if (v > 100) return C.rojoDot;
   if (v > 50)  return C.amberDot;
   return '#16a34a';
+}
+
+function irsuNivel(v: number): FiltroNivel {
+  if (v > 100) return 'CRITICO';
+  if (v > 50)  return 'ALERTA';
+  return 'ESTABLE';
 }
 
 type StatusCfg = { bg: string; text: string; dot: string; label: string };
@@ -40,7 +57,7 @@ function statusCfg(irsu: number): StatusCfg {
   return               { bg: C.verdeMid, text: C.verdeText, dot: '#16a34a',  label: 'ESTABLE' };
 }
 
-// ─── Chip estado ──────────────────────────────────────────────────────────────
+// ─── Subcomponentes ───────────────────────────────────────────────────────────
 function Chip({ irsu }: { irsu: number }) {
   const s = statusCfg(irsu);
   return (
@@ -54,14 +71,12 @@ function Chip({ irsu }: { irsu: number }) {
   );
 }
 
-// ─── Banner fórmula ───────────────────────────────────────────────────────────
 function FormulaBanner() {
   return (
     <View style={{
       backgroundColor: C.blanco,
       borderWidth: 1, borderColor: C.borde,
       borderRadius: isWeb ? 10 : 0,
-      margin: isWeb ? 0 : 0,
       padding: 16,
       flexDirection: isWeb ? 'row' : 'column',
       justifyContent: 'space-between',
@@ -92,12 +107,15 @@ function FormulaBanner() {
   );
 }
 
-// ─── Panel de ranking ─────────────────────────────────────────────────────────
 function RankingPanel({
-  comunidades, isLoading,
-}: { comunidades: ComunidadResumen[]; isLoading: boolean }) {
-  // Ordenar por IRSU descendente
+  comunidades, isLoading, busqueda,
+}: { comunidades: ComunidadResumen[]; isLoading: boolean; busqueda: string }) {
   const ordenadas = [...comunidades].sort((a, b) => b.irsuActual - a.irsuActual);
+
+  // Resalta el texto que coincide con la búsqueda (solo mobile/texto)
+  function resaltarNombre(nombre: string): string {
+    return nombre;
+  }
 
   return (
     <View style={{
@@ -109,7 +127,6 @@ function RankingPanel({
       width: isWeb ? 340 : undefined,
       flexShrink: 0,
     }}>
-      {/* Cabecera */}
       <View style={{
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         paddingHorizontal: 16, paddingVertical: 12,
@@ -119,29 +136,33 @@ function RankingPanel({
         <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6 }}>
           RANKING DE RIESGO
         </Text>
-        <Text style={{ fontSize: 12, color: C.textoMuted }}>{ordenadas.length} comunidades</Text>
+        <Text style={{ fontSize: 12, color: C.textoMuted }}>
+          {ordenadas.length} {ordenadas.length === 1 ? 'comunidad' : 'comunidades'}
+        </Text>
       </View>
 
-      {/* Encabezados tabla */}
       <View style={{
         flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8,
         backgroundColor: '#f9fafb',
         borderBottomWidth: 1, borderBottomColor: C.bordeLight,
       }}>
-        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>
-          COMUNIDAD
-        </Text>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, width: 60, textAlign: 'center' }}>
-          SCORE
-        </Text>
-        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, width: 80, textAlign: 'right' }}>
-          ESTATUS
-        </Text>
+        <Text style={{ flex: 1, fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5 }}>COMUNIDAD</Text>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, width: 60, textAlign: 'center' }}>SCORE</Text>
+        <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.5, width: 80, textAlign: 'right' }}>ESTATUS</Text>
       </View>
 
       {isLoading && (
         <View style={{ alignItems: 'center', paddingVertical: 32 }}>
           <ActivityIndicator color={C.verde} />
+        </View>
+      )}
+
+      {!isLoading && ordenadas.length === 0 && (
+        <View style={{ alignItems: 'center', paddingVertical: 32, gap: 8 }}>
+          <Ionicons name="search-outline" size={36} color={C.textoMuted} />
+          <Text style={{ color: C.textoMuted, fontSize: 13 }}>
+            {busqueda.length > 0 ? `Sin resultados para "${busqueda}"` : 'Sin comunidades registradas'}
+          </Text>
         </View>
       )}
 
@@ -157,7 +178,6 @@ function RankingPanel({
               borderBottomColor: C.bordeLight,
             }}
           >
-            {/* Indicador lateral + nombre */}
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={{ width: 3, height: 32, borderRadius: 2, backgroundColor: color }} />
               <View style={{ flex: 1 }}>
@@ -167,33 +187,22 @@ function RankingPanel({
                 <Text style={{ fontSize: 11, color: C.textoMuted }}>{com.municipio.nombre}</Text>
               </View>
             </View>
-
-            {/* Score */}
             <Text style={{
               fontSize: 15, fontWeight: '800', color,
               width: 60, textAlign: 'center', fontFamily: 'monospace',
             }}>
               {com.irsuActual.toFixed(1)}
             </Text>
-
-            {/* Chip */}
             <View style={{ width: 80, alignItems: 'flex-end' }}>
               <Chip irsu={com.irsuActual} />
             </View>
           </View>
         );
       })}
-
-      {!isLoading && ordenadas.length === 0 && (
-        <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-          <Text style={{ color: C.textoMuted, fontSize: 13 }}>Sin comunidades registradas</Text>
-        </View>
-      )}
     </View>
   );
 }
 
-// ─── Tarjeta de alerta ────────────────────────────────────────────────────────
 function AlertCard({ com }: { com: ComunidadResumen }) {
   return (
     <View style={{
@@ -205,20 +214,15 @@ function AlertCard({ com }: { com: ComunidadResumen }) {
     }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 10, fontWeight: '700', color: C.rojoDot, letterSpacing: 0.5, marginBottom: 4 }}>
-            ALERTA ROJA
-          </Text>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: C.texto }} numberOfLines={1}>
-            {com.nombre}
-          </Text>
+          <Text style={{ fontSize: 10, fontWeight: '700', color: C.rojoDot, letterSpacing: 0.5, marginBottom: 4 }}>ALERTA ROJA</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: C.texto }} numberOfLines={1}>{com.nombre}</Text>
         </View>
         <Text style={{ fontSize: 28, fontWeight: '800', color: C.rojoDot, fontFamily: 'monospace', marginLeft: 8 }}>
           {com.irsuActual.toFixed(1)}
         </Text>
       </View>
       <Text style={{ fontSize: 12, color: C.textoMuted, marginBottom: 14 }}>
-        El índice IRSU supera el umbral crítico institucional (100).
-        Se requiere intervención.
+        El índice IRSU supera el umbral crítico institucional (100). Se requiere intervención.
       </Text>
       <View style={{
         flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -232,40 +236,28 @@ function AlertCard({ com }: { com: ComunidadResumen }) {
   );
 }
 
-// ─── Sección de alertas ───────────────────────────────────────────────────────
 function AlertasSection({ criticas }: { criticas: ComunidadResumen[] }) {
   if (criticas.length === 0) return null;
-
   return (
     <View>
-      {/* Título */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.rojoDot }} />
         <Text style={{ fontSize: 16, fontWeight: '700', color: C.texto }}>
           Alertas Críticas Activas (IRSU {'>'} 100)
         </Text>
       </View>
-
-      {/* Grid de tarjetas */}
-      <View style={{
-        flexDirection: isWeb ? 'row' : 'column',
-        flexWrap: 'wrap',
-        gap: 14,
-      }}>
-        {criticas.map((com) => (
-          <AlertCard key={com.id} com={com} />
-        ))}
-        {/* Placeholder si hay espacio */}
+      <View style={{ flexDirection: isWeb ? 'row' : 'column', flexWrap: 'wrap', gap: 14 }}>
+        {criticas.map((com) => <AlertCard key={com.id} com={com} />)}
         {isWeb && criticas.length % 4 !== 0 && (
           <View style={{
             flex: 1, minWidth: 220,
             backgroundColor: '#f9fafb',
             borderWidth: 1, borderColor: C.borde,
-            borderStyle: 'dashed', borderRadius: 10,
-            padding: 16, alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10, padding: 16,
+            alignItems: 'center', justifyContent: 'center',
           }}>
-            <Text style={{ fontSize: 28, color: C.textoMuted, marginBottom: 6 }}>🔔</Text>
-            <Text style={{ fontSize: 12, color: C.textoMuted, textAlign: 'center' }}>
+            <Ionicons name="notifications-outline" size={28} color={C.textoMuted} />
+            <Text style={{ fontSize: 12, color: C.textoMuted, textAlign: 'center', marginTop: 6 }}>
               No hay más alertas críticas en este cuadrante.
             </Text>
           </View>
@@ -277,28 +269,103 @@ function AlertasSection({ criticas }: { criticas: ComunidadResumen[] }) {
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 export function ListaComunidades() {
-  const { data: comunidades = [], isLoading, isError, refetch } = useOaxacaComunidades('ACTIVO');
-  const criticas = comunidades.filter((c: any) => c.irsuActual > 100);
+  const { data: todasComunidades = [], isLoading, isError, refetch } = useOaxacaComunidades('ACTIVO');
+
+  const [busqueda, setBusqueda]       = useState('');
+  const [filtroNivel, setFiltroNivel] = useState<FiltroNivel>('TODOS');
+
+  // Filtrado reactivo
+  const comunidades = useMemo(() => {
+    let lista = todasComunidades as ComunidadResumen[];
+
+    if (busqueda.trim().length > 0) {
+      const q = busqueda.trim().toLowerCase();
+      lista = lista.filter((c) => c.nombre.toLowerCase().includes(q));
+    }
+
+    if (filtroNivel !== 'TODOS') {
+      lista = lista.filter((c) => irsuNivel(c.irsuActual) === filtroNivel);
+    }
+
+    return lista;
+  }, [todasComunidades, busqueda, filtroNivel]);
+
+  const criticas = comunidades.filter((c) => c.irsuActual > 100);
+
+  const hayFiltro = busqueda.trim().length > 0 || filtroNivel !== 'TODOS';
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
 
-      {/* Header móvil */}
+      {/* Header con búsqueda y chips ──────────────────────────────────────── */}
       {!isWeb && (
-        <View style={{
-          paddingHorizontal: 20, paddingTop: 52, paddingBottom: 12,
-          backgroundColor: C.verde,
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 }}>IRSU</Text>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>Comunidades</Text>
+        <View style={{ backgroundColor: C.verde, paddingTop: 52, paddingBottom: 14, paddingHorizontal: 16 }}>
+          {/* Título */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5 }}>IRSU</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>Comunidades</Text>
+          </View>
+
+          {/* Barra de búsqueda */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: 'rgba(255,255,255,0.12)',
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+            borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+            marginBottom: 10,
+          }}>
+            <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.6)" />
+            <TextInput
+              value={busqueda}
+              onChangeText={(t) => setBusqueda(t)}
+              placeholder="Buscar comunidad..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              style={{ flex: 1, fontSize: 14, color: '#fff' }}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {busqueda.length > 0 && (
+              <TouchableOpacity onPress={() => setBusqueda('')}>
+                <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Chips de filtro */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {FILTROS.map((f) => {
+                const activo = filtroNivel === f.value;
+                return (
+                  <TouchableOpacity
+                    key={f.value}
+                    onPress={() => setFiltroNivel(f.value)}
+                    style={{
+                      borderRadius: 99,
+                      paddingHorizontal: 14, paddingVertical: 5,
+                      backgroundColor: activo ? '#fff' : 'transparent',
+                      borderWidth: 1,
+                      borderColor: activo ? '#fff' : 'rgba(255,255,255,0.3)',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 12, fontWeight: '600',
+                      color: activo ? C.verde : 'rgba(255,255,255,0.75)',
+                    }}>
+                      {f.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
       )}
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ padding: isWeb ? 28 : 16, gap: 16 }}>
 
-          {/* Error state */}
+          {/* Error */}
           {isError && (
             <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
               <Text style={{ color: C.textoMuted }}>Error al cargar comunidades</Text>
@@ -314,85 +381,163 @@ export function ListaComunidades() {
           {/* Fórmula */}
           <FormulaBanner />
 
-          {/* Contenido principal: ranking + mapa */}
-          <View style={{
-            flexDirection: isWeb ? 'row' : 'column',
-            gap: 16,
-            minHeight: isWeb ? 480 : undefined,
-          }}>
-            {/* Ranking */}
-            <RankingPanel comunidades={comunidades} isLoading={isLoading} />
+          {/* Buscador web (sobre el ranking) */}
+          {isWeb && (
+            <View style={{
+              backgroundColor: C.blanco,
+              borderWidth: 1, borderColor: C.borde,
+              borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+            }}>
+              <Ionicons name="search-outline" size={18} color={C.textoMuted} />
+              <TextInput
+                value={busqueda}
+                onChangeText={(t) => setBusqueda(t)}
+                placeholder="Buscar comunidad..."
+                placeholderTextColor={C.textoMuted}
+                style={{ flex: 1, fontSize: 14, color: C.texto, outlineStyle: 'none' } as any}
+              />
+              {busqueda.length > 0 && (
+                <TouchableOpacity onPress={() => setBusqueda('')}>
+                  <Ionicons name="close-circle" size={16} color={C.textoMuted} />
+                </TouchableOpacity>
+              )}
 
-            {/* Mapa (web) / placeholder (mobile) */}
-            {isWeb ? (
-              <View style={{
-                flex: 1,
-                backgroundColor: C.blanco,
-                borderWidth: 1, borderColor: C.borde,
-                borderRadius: 10,
-                overflow: 'hidden',
-                minHeight: 480,
-              }}>
-                {/* Controles del mapa */}
-                <View style={{
-                  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                  paddingHorizontal: 16, paddingVertical: 12,
-                  borderBottomWidth: 1, borderBottomColor: C.bordeLight,
-                  backgroundColor: '#fafcfa',
-                  // Encima del mapa via zIndex
-                  zIndex: 10,
-                  position: 'relative',
-                }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6 }}>
-                    MAPA DE CALOR — IRSU MUNICIPAL
-                  </Text>
-                  <View style={{
-                    flexDirection: 'row', alignItems: 'center', gap: 5,
-                    backgroundColor: C.verdeLight, borderRadius: 99,
-                    paddingHorizontal: 10, paddingVertical: 4,
-                  }}>
-                    <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: '#22c55e' }} />
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: C.verde }}>EN VIVO</Text>
-                  </View>
-                </View>
-
-                {/* Leaflet map */}
-                <View style={{ flex: 1 }}>
-                  {isLoading ? (
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                      <ActivityIndicator color={C.verde} size="large" />
-                      <Text style={{ color: C.textoMuted, marginTop: 10, fontSize: 13 }}>
-                        Cargando mapa...
+              {/* Chips filtro web */}
+              <View style={{ flexDirection: 'row', gap: 6, marginLeft: 6 }}>
+                {FILTROS.map((f) => {
+                  const activo = filtroNivel === f.value;
+                  return (
+                    <TouchableOpacity
+                      key={f.value}
+                      onPress={() => setFiltroNivel(f.value)}
+                      style={{
+                        borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5,
+                        backgroundColor: activo ? C.verde : C.blanco,
+                        borderWidth: 1, borderColor: activo ? C.verde : C.borde,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: activo ? '#fff' : C.textoSub }}>
+                        {f.label}
                       </Text>
-                    </View>
-                  ) : (
-                    <MapaComunidades comunidades={comunidades} />
-                  )}
-                </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            ) : (
-              // En mobile solo mostramos el mensaje (el mapa de ubicación está en FormularioReporte)
-              comunidades.length > 0 && (
+            </View>
+          )}
+
+          {/* Contador resultados */}
+          {hayFiltro && !isLoading && (
+            <Text style={{ fontSize: 12, color: C.textoMuted, paddingHorizontal: 2 }}>
+              {comunidades.length === 0
+                ? `Sin resultados${busqueda.length > 0 ? ` para "${busqueda}"` : ''}`
+                : `${comunidades.length} ${comunidades.length === 1 ? 'comunidad' : 'comunidades'} encontrada${comunidades.length === 1 ? '' : 's'}${busqueda.length > 0 ? ` para "${busqueda}"` : ''}`
+              }
+            </Text>
+          )}
+
+          {/* Estado vacío con filtro activo */}
+          {hayFiltro && !isLoading && comunidades.length === 0 && (
+            <View style={{
+              backgroundColor: C.blanco,
+              borderWidth: 1, borderColor: C.borde,
+              borderRadius: 10, padding: 32,
+              alignItems: 'center', gap: 10,
+            }}>
+              <Ionicons name="search-outline" size={40} color={C.textoMuted} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: C.texto }}>Sin resultados</Text>
+              <Text style={{ fontSize: 13, color: C.textoMuted, textAlign: 'center' }}>
+                {busqueda.length > 0
+                  ? `No encontramos ninguna comunidad con "${busqueda}"`
+                  : `No hay comunidades en nivel ${filtroNivel.toLowerCase()}`
+                }
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setBusqueda(''); setFiltroNivel('TODOS'); }}
+                style={{
+                  backgroundColor: C.verdeLight, borderWidth: 1, borderColor: '#b8e0c5',
+                  borderRadius: 8, paddingHorizontal: 16, paddingVertical: 7, marginTop: 4,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: C.verde }}>Limpiar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Ranking + mapa */}
+          {(comunidades.length > 0 || isLoading) && (
+            <View style={{
+              flexDirection: isWeb ? 'row' : 'column',
+              gap: 16,
+              minHeight: isWeb ? 480 : undefined,
+            }}>
+              <RankingPanel comunidades={comunidades} isLoading={isLoading} busqueda={busqueda} />
+
+              {isWeb ? (
                 <View style={{
+                  flex: 1,
                   backgroundColor: C.blanco,
                   borderWidth: 1, borderColor: C.borde,
-                  borderRadius: 10, padding: 16,
-                  alignItems: 'center', gap: 8,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  minHeight: 480,
                 }}>
-                  <Text style={{ fontSize: 32 }}>🗺️</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: C.texto }}>
-                    Mapa disponible en versión web
-                  </Text>
-                  <Text style={{ fontSize: 12, color: C.textoMuted, textAlign: 'center' }}>
-                    Accede desde un navegador para ver el mapa de calor IRSU.
-                  </Text>
+                  <View style={{
+                    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                    paddingHorizontal: 16, paddingVertical: 12,
+                    borderBottomWidth: 1, borderBottomColor: C.bordeLight,
+                    backgroundColor: '#fafcfa',
+                    zIndex: 10, position: 'relative',
+                  }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: C.textoMuted, letterSpacing: 0.6 }}>
+                      MAPA DE CALOR — IRSU MUNICIPAL
+                    </Text>
+                    <View style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 5,
+                      backgroundColor: C.verdeLight, borderRadius: 99,
+                      paddingHorizontal: 10, paddingVertical: 4,
+                    }}>
+                      <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: '#22c55e' }} />
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: C.verde }}>EN VIVO</Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    {isLoading ? (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <ActivityIndicator color={C.verde} size="large" />
+                        <Text style={{ color: C.textoMuted, marginTop: 10, fontSize: 13 }}>Cargando mapa...</Text>
+                      </View>
+                    ) : (
+                      <MapaComunidades comunidades={comunidades} />
+                    )}
+                  </View>
                 </View>
-              )
-            )}
-          </View>
+              ) : (
+                comunidades.length > 0 && (
+                  <View style={{
+                    backgroundColor: C.blanco,
+                    borderWidth: 1, borderColor: C.borde,
+                    borderRadius: 10, padding: 16,
+                    alignItems: 'center', gap: 8,
+                  }}>
+                    <Ionicons name="map-outline" size={32} color={C.textoMuted} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.texto }}>
+                      Mapa disponible en versión web
+                    </Text>
+                    <Text style={{ fontSize: 12, color: C.textoMuted, textAlign: 'center' }}>
+                      Accede desde un navegador para ver el mapa de calor IRSU.
+                    </Text>
+                  </View>
+                )
+              )}
+            </View>
+          )}
 
-          {/* Alertas críticas */}
-          <AlertasSection criticas={criticas} />
+          {/* Alertas críticas (solo si no hay filtro activo o el filtro incluye críticos) */}
+          {(!hayFiltro || filtroNivel === 'CRITICO' || filtroNivel === 'TODOS') && (
+            <AlertasSection criticas={criticas} />
+          )}
 
           <View style={{ height: isWeb ? 8 : 80 }} />
         </View>

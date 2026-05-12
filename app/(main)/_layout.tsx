@@ -69,6 +69,7 @@ export default function MainLayout() {
       />
       {/* Suprimir rutas dinámicas que no deben ser tabs */}
       <Tabs.Screen name="reportes/[id]" options={{ href: null }} />
+      <Tabs.Screen name="reportes/crear" options={{ href: null }} />
       <Tabs.Screen name="comunidades/[id]" options={{ href: null }} />
 
       <Tabs.Screen
