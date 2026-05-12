@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/src/lib/axios';
 
-export function useOaxacaComunidades(status?: string) {
+export function useOaxacaComunidades(status?: string, limit = 150) {
   return useQuery({
-    queryKey: ['comunidades-oaxaca', status],
+    queryKey: ['comunidades-oaxaca', status, limit],
     queryFn: () =>
       api.get('/comunidades', {
         params: {
-          municipioId: 1082, // ID de Oaxaca de Juárez
-          limit: 1000,
+          municipioId: 1082, // Oaxaca de Juárez
+          limit,
           ...(status && { status }),
         },
       }).then(r => r.data.data ?? []),
