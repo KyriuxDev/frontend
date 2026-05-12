@@ -174,13 +174,9 @@ export function FormularioReporte() {
 			try {
 				await subirFotos(reporte.id, fotos);
 			} catch (err: any) {
-				console.error("Error al subir fotos:", JSON.stringify(err?.response?.data));
-				console.error("Status:", err?.response?.status);
-				console.error("Message:", err?.message);
-
 				Alert.alert(
-				"Debug fotos",
-				`Status: ${err?.response?.status}\nData: ${JSON.stringify(err?.response?.data)}\nMsg: ${err?.message}`
+				"Reporte creado",
+				"El reporte se registró correctamente, pero no se pudieron subir algunas fotos. Puedes agregarlas después desde el detalle del reporte.",
 				);
 				router.push("/(main)/reportes");
 				return;
@@ -191,9 +187,24 @@ export function FormularioReporte() {
 
 			router.push("/(main)/reportes");
 		} catch (err: any) {
-			const msg =
-			err?.response?.data?.error ??
-			JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
+			const status = err?.response?.status;
+			const msg    = err?.response?.data?.error ?? "Error desconocido";
+
+			if (status === 429) {
+			Alert.alert(
+				"Límite alcanzado",
+				"Como invitado solo puedes enviar 3 reportes por día.\n¿Quieres registrarte para enviar más?",
+				[
+				{ text: "Ahora no", style: "cancel" },
+				{
+					text: "Registrarme",
+					onPress: () => router.push("/auth/registro"),
+				},
+				]
+			);
+			return;
+			}
+
 			Alert.alert("Error del servidor", msg);
 		}
 	};
