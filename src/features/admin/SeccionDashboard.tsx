@@ -5,7 +5,6 @@ import {
 	ScrollView,
 	TouchableOpacity,
 	ActivityIndicator,
-	Alert,
 } from "react-native";
 import {
 	Svg,
@@ -54,33 +53,13 @@ const C = {
 function estadoCfg(e: EstadoReporte) {
 	switch (e) {
 		case "PENDIENTE":
-			return {
-				bg: C.amber,
-				text: C.amberText,
-				dot: C.amberDot,
-				label: "Pendiente",
-			};
+			return { bg: C.amber, text: C.amberText, dot: C.amberDot, label: "Pendiente" };
 		case "EN_PROCESO":
-			return {
-				bg: C.azul,
-				text: C.azulText,
-				dot: C.azulDot,
-				label: "En Proceso",
-			};
+			return { bg: C.azul, text: C.azulText, dot: C.azulDot, label: "En Proceso" };
 		case "RESUELTO":
-			return {
-				bg: C.verdeMid,
-				text: C.verdeText,
-				dot: "#16a34a",
-				label: "Resuelto",
-			};
+			return { bg: C.verdeMid, text: C.verdeText, dot: "#16a34a", label: "Resuelto" };
 		case "RECHAZADO":
-			return {
-				bg: C.rojo,
-				text: C.rojoText,
-				dot: C.rojoDot,
-				label: "Rechazado",
-			};
+			return { bg: C.rojo, text: C.rojoText, dot: C.rojoDot, label: "Rechazado" };
 	}
 }
 
@@ -166,6 +145,7 @@ function IrsuChart({
 	puntos,
 	labelsX,
 	maxPunto,
+	minIrsuValor,  // ← nuevo
 	maxIrsuValor,
 	isLoading,
 	onRecalcular,
@@ -176,6 +156,7 @@ function IrsuChart({
 	puntos: { x: number; y: number }[];
 	labelsX: string[];
 	maxPunto: { x: number; y: number } | null;
+	minIrsuValor: number;  // ← nuevo
 	maxIrsuValor: number;
 	isLoading: boolean;
 	onRecalcular: () => void;
@@ -187,15 +168,12 @@ function IrsuChart({
 			? `${linePath} L${puntos[puntos.length - 1].x},300 L${puntos[0].x},300 Z`
 			: "";
 
-	const maxLabel = Math.ceil(maxIrsuValor / 30) * 30 || 150;
-	const yLabels = [
-		maxLabel,
-		Math.round(maxLabel * 0.8),
-		Math.round(maxLabel * 0.6),
-		Math.round(maxLabel * 0.4),
-		Math.round(maxLabel * 0.2),
-		0,
-	];
+	// ── Labels Y dinámicos basados en el rango real de los datos ──
+	const rango = Math.max(maxIrsuValor - minIrsuValor, 5);
+	const step = rango / 5;
+	const yLabels = [0, 1, 2, 3, 4, 5].map((i) =>
+		Math.round(minIrsuValor + (5 - i) * step)
+	);
 
 	const tooltipRight = maxPunto && maxPunto.x > 700 ? "55%" : "18%";
 
@@ -229,11 +207,7 @@ function IrsuChart({
 					</Text>
 					<Text style={{ fontSize: 12, color: C.textoMuted, marginTop: 2 }}>
 						Evolución del riesgo urbano — últimos{" "}
-						{periodo === "7D"
-							? "7 días"
-							: periodo === "30D"
-								? "30 días"
-								: "90 días"}
+						{periodo === "7D" ? "7 días" : periodo === "30D" ? "30 días" : "90 días"}
 					</Text>
 				</View>
 
@@ -257,7 +231,7 @@ function IrsuChart({
 						{recalculando ? (
 							<ActivityIndicator size="small" color={C.verde} />
 						) : (
-							<Text style={{ fontSize: 13 }}></Text>
+							<Text style={{ fontSize: 13 }}>↻</Text>
 						)}
 						<Text
 							style={{
@@ -300,6 +274,7 @@ function IrsuChart({
 
 			{/* Chart body */}
 			<View style={{ padding: 16, height: 280 }}>
+				{/* Labels eje Y */}
 				<View
 					style={{
 						position: "absolute",
@@ -309,9 +284,9 @@ function IrsuChart({
 						justifyContent: "space-between",
 					}}
 				>
-					{yLabels.map((l) => (
+					{yLabels.map((l, i) => (
 						<Text
-							key={l}
+							key={i}
 							style={{
 								fontSize: 10,
 								color: C.textoMuted,
@@ -326,13 +301,7 @@ function IrsuChart({
 
 				<View style={{ marginLeft: 36, marginBottom: 20, flex: 1 }}>
 					{isLoading ? (
-						<View
-							style={{
-								flex: 1,
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
+						<View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
 							<ActivityIndicator color={C.verde} />
 						</View>
 					) : puntos.length < 2 ? (
@@ -363,11 +332,9 @@ function IrsuChart({
 								{recalculando ? (
 									<ActivityIndicator size="small" color="#fff" />
 								) : (
-									<Text style={{ fontSize: 14 }}></Text>
+									<Text style={{ fontSize: 14 }}>↻</Text>
 								)}
-								<Text
-									style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}
-								>
+								<Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
 									{recalculando ? "Calculando..." : "Generar datos IRSU"}
 								</Text>
 							</TouchableOpacity>
@@ -379,18 +346,12 @@ function IrsuChart({
 									maxWidth: 260,
 								}}
 							>
-								Presiona para calcular el índice IRSU de todas las comunidades
-								activas
+								Presiona para calcular el índice IRSU de todas las comunidades activas
 							</Text>
 						</View>
 					) : (
 						<>
-							<Svg
-								width={900}
-								height={240}
-								viewBox="0 0 1000 300"
-								// preserveAspectRatio="none"
-							>
+							<Svg width={900} height={240} viewBox="0 0 1000 300">
 								<Defs>
 									<LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
 										<Stop offset="0%" stopColor={C.verde} stopOpacity={0.15} />
@@ -466,9 +427,7 @@ function IrsuChart({
 									>
 										IRSU: {maxIrsuValor.toFixed(1)}
 									</Text>
-									<Text
-										style={{ color: "rgba(255,255,255,0.7)", fontSize: 10 }}
-									>
+									<Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10 }}>
 										{maxIrsuValor > 100
 											? "⚠ Alerta Roja"
 											: maxIrsuValor > 50
@@ -481,6 +440,7 @@ function IrsuChart({
 					)}
 				</View>
 
+				{/* Labels eje X */}
 				<View
 					style={{
 						flexDirection: "row",
@@ -514,12 +474,8 @@ function ChipEstado({ estado }: { estado: EstadoReporte }) {
 				borderRadius: 99,
 			}}
 		>
-			<View
-				style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.dot }}
-			/>
-			<Text style={{ fontSize: 11, fontWeight: "700", color: c.text }}>
-				{c.label}
-			</Text>
+			<View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.dot }} />
+			<Text style={{ fontSize: 11, fontWeight: "700", color: c.text }}>{c.label}</Text>
 		</View>
 	);
 }
@@ -532,11 +488,7 @@ function CatTag({ categoria }: { categoria: string }) {
 		BLOQUEOS: { bg: "#fdf2f8", text: "#9d174d", border: "#db2777" },
 		SEGURIDAD: { bg: "#f0fdf4", text: "#166534", border: "#22c55e" },
 	};
-	const c = colors[categoria] ?? {
-		bg: "#f1f5f9",
-		text: "#64748b",
-		border: "#94a3b8",
-	};
+	const c = colors[categoria] ?? { bg: "#f1f5f9", text: "#64748b", border: "#94a3b8" };
 	return (
 		<View
 			style={{
@@ -548,9 +500,7 @@ function CatTag({ categoria }: { categoria: string }) {
 				borderRadius: 2,
 			}}
 		>
-			<Text style={{ fontSize: 11, fontWeight: "600", color: c.text }}>
-				{categoria}
-			</Text>
+			<Text style={{ fontSize: 11, fontWeight: "600", color: c.text }}>{categoria}</Text>
 		</View>
 	);
 }
@@ -560,10 +510,7 @@ function Estrellas({ n }: { n: number }) {
 	return (
 		<View style={{ flexDirection: "row", gap: 1 }}>
 			{[1, 2, 3, 4, 5].map((i) => (
-				<Text
-					key={i}
-					style={{ fontSize: 13, color: i <= n ? "#f59e0b" : "#e2e8f0" }}
-				>
+				<Text key={i} style={{ fontSize: 13, color: i <= n ? "#f59e0b" : "#e2e8f0" }}>
 					★
 				</Text>
 			))}
@@ -672,10 +619,7 @@ function TablaReportes({
 					<View style={{ flex: 1.5 }}>
 						<CatTag categoria={r.categoria} />
 					</View>
-					<Text
-						style={{ flex: 1.5, fontSize: 13, color: C.textoSub }}
-						numberOfLines={1}
-					>
+					<Text style={{ flex: 1.5, fontSize: 13, color: C.textoSub }} numberOfLines={1}>
 						{r.comunidad.nombre}
 					</Text>
 					<View style={{ flex: 1 }}>
@@ -684,14 +628,7 @@ function TablaReportes({
 					<View style={{ flex: 1.5 }}>
 						<ChipEstado estado={r.estado} />
 					</View>
-					<Text
-						style={{
-							flex: 1,
-							fontSize: 12,
-							color: C.textoMuted,
-							fontFamily: "monospace",
-						}}
-					>
+					<Text style={{ flex: 1, fontSize: 12, color: C.textoMuted, fontFamily: "monospace" }}>
 						{formatearFechaCorta(r.createdAt)}
 					</Text>
 				</View>
@@ -728,25 +665,26 @@ export function SeccionDashboard() {
 	const [periodo, setPeriodo] = useState<"7D" | "30D" | "90D">("30D");
 
 	const { data: dashData, isLoading: loadingDash } = useDashboardStats(periodo);
-	const { data: reportesData, isLoading: loadingReportes } = useReportes({
-		limit: 100,
-	} as any);
+	const { data: reportesData, isLoading: loadingReportes } = useReportes({ limit: 100 } as any);
 	const { mutate: recalcular, isPending: recalculando } = useRecalcularIrsu();
 
 	const kpis = dashData?.kpis;
 	const serie = dashData?.serie ?? [];
 	const reportes = reportesData?.data ?? [];
 
+	// ── Puntos de la gráfica escalados al rango real min/max ──────────────────
 	const puntosGrafica = useMemo(() => {
 		if (serie.length === 0) return [];
-
-		// Con un solo punto, duplicamos para poder dibujar una línea plana
 		const serieNormalizada = serie.length === 1 ? [serie[0], serie[0]] : serie;
 
-		const maxIrsu = Math.max(...serieNormalizada.map((s) => s.irsu), 1);
+		const valores = serieNormalizada.map((s) => s.irsu);
+		const minIrsu = Math.min(...valores);
+		const maxIrsu = Math.max(...valores);
+		const rango = Math.max(maxIrsu - minIrsu, 5); // mínimo rango de 5
+
 		return serieNormalizada.map((s, i) => ({
 			x: Math.round((i / (serieNormalizada.length - 1)) * 1000),
-			y: Math.round(300 - (s.irsu / maxIrsu) * 260),
+			y: Math.round(300 - ((s.irsu - minIrsu) / rango) * 260),
 		}));
 	}, [serie]);
 
@@ -761,7 +699,7 @@ export function SeccionDashboard() {
 			new Date(s.fecha).toLocaleDateString("es-MX", {
 				day: "2-digit",
 				month: "short",
-			}),
+			})
 		);
 	}, [serie]);
 
@@ -770,33 +708,19 @@ export function SeccionDashboard() {
 		return puntosGrafica.reduce((max, p) => (p.y < max.y ? p : max));
 	}, [puntosGrafica]);
 
-	const maxIrsuValor =
-		serie.length > 0 ? Math.max(...serie.map((s) => s.irsu)) : 0;
+	// ── Min y max del valor real IRSU para labels del eje Y ───────────────────
+	const minIrsuValor = serie.length > 0 ? Math.min(...serie.map((s) => s.irsu)) : 0;
+	const maxIrsuValor = serie.length > 0 ? Math.max(...serie.map((s) => s.irsu)) : 0;
 
 	const handleRecalcular = () => {
-		// Alert.alert(
-		// 	"Recalcular IRSU",
-		// 	"¿Calcular el índice IRSU de todas las comunidades activas? Esto puede tardar unos segundos.",
-		// 	[
-		// 		{ text: "Cancelar", style: "cancel" },
-		// 		{ text: "Calcular", onPress: () => recalcular() },
-		// 	],
-		// );
-    console.log("Recalculando IRSU para todas las comunidades...");
-    recalcular();
+		console.log("Recalculando IRSU para todas las comunidades...");
+		recalcular();
 	};
 
 	return (
 		<ScrollView showsVerticalScrollIndicator={false}>
 			{/* KPI Cards */}
-			<View
-				style={{
-					flexDirection: "row",
-					gap: 14,
-					marginBottom: 20,
-					flexWrap: "wrap",
-				}}
-			>
+			<View style={{ flexDirection: "row", gap: 14, marginBottom: 20, flexWrap: "wrap" }}>
 				<KpiCard
 					label="Total Reportes"
 					value={loadingDash ? "..." : (kpis?.totalReportes ?? 0)}
@@ -808,11 +732,7 @@ export function SeccionDashboard() {
 					value={loadingDash ? "..." : (kpis?.pendientes ?? 0)}
 					topColor={C.amberDot}
 					barWidth={
-						kpis
-							? Math.round(
-									(kpis.pendientes / Math.max(kpis.totalReportes, 1)) * 100,
-								)
-							: 0
+						kpis ? Math.round((kpis.pendientes / Math.max(kpis.totalReportes, 1)) * 100) : 0
 					}
 				/>
 				<KpiCard
@@ -820,11 +740,7 @@ export function SeccionDashboard() {
 					value={loadingDash ? "..." : (kpis?.enProceso ?? 0)}
 					topColor={C.azulDot}
 					barWidth={
-						kpis
-							? Math.round(
-									(kpis.enProceso / Math.max(kpis.totalReportes, 1)) * 100,
-								)
-							: 0
+						kpis ? Math.round((kpis.enProceso / Math.max(kpis.totalReportes, 1)) * 100) : 0
 					}
 				/>
 				<KpiCard
@@ -832,11 +748,7 @@ export function SeccionDashboard() {
 					value={loadingDash ? "..." : (kpis?.resueltos ?? 0)}
 					topColor="#16a34a"
 					barWidth={
-						kpis
-							? Math.round(
-									(kpis.resueltos / Math.max(kpis.totalReportes, 1)) * 100,
-								)
-							: 0
+						kpis ? Math.round((kpis.resueltos / Math.max(kpis.totalReportes, 1)) * 100) : 0
 					}
 				/>
 			</View>
@@ -848,12 +760,12 @@ export function SeccionDashboard() {
 				puntos={puntosGrafica}
 				labelsX={labelsX}
 				maxPunto={maxPunto}
+				minIrsuValor={minIrsuValor}
 				maxIrsuValor={maxIrsuValor}
 				isLoading={loadingDash}
-				onRecalcular={handleRecalcular} 
+				onRecalcular={handleRecalcular}
 				recalculando={recalculando}
 			/>
-      
 
 			{/* Tabla reportes recientes */}
 			<TablaReportes reportes={reportes} isLoading={loadingReportes} />
