@@ -12,6 +12,7 @@ import { useReporte, useVotos, useVotar, useQuitarVoto } from './reporte.queries
 import { EstadoReporte, Categoria } from './reporte.types';
 import { formatearFecha } from '@/src/utils/formatDate';
 import { useAuthStore } from '@/src/store/auth.store';
+import { getImageUrl } from '@/src/utils/getImageUrl';
 
 const { width } = Dimensions.get('window');
 
@@ -130,14 +131,17 @@ export function DetalleReporte({ id }: Props) {
             showsHorizontalScrollIndicator={false}
             style={{ width, height: width * 0.75 }}
           >
-            {reporte.fotos.map((foto) => (
-              <Image
-                key={foto.id}
-                source={{ uri: foto.url }}
-                style={{ width, height: width * 0.75 }}
-                resizeMode="cover"
-              />
-            ))}
+            {reporte.fotos.map((foto) => {
+              const fotoUrl = getImageUrl(foto.url);
+              return fotoUrl ? (
+                <Image
+                  key={foto.id}
+                  source={{ uri: fotoUrl }}
+                  style={{ width, height: width * 0.75 }}
+                  resizeMode="cover"
+                />
+              ) : null;
+            })}
           </ScrollView>
         ) : (
           <View
@@ -154,7 +158,22 @@ export function DetalleReporte({ id }: Props) {
           </View>
         )}
 
-        <View style={{ paddingHorizontal: 20, marginTop: -24 }}>
+        {/* Indicador de fotos */}
+        {reporte.fotos.length > 1 && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: '#ffffff' }}>
+            {reporte.fotos.map((f, i) => (
+              <View
+                key={f.id}
+                style={{
+                  width: 6, height: 6, borderRadius: 3,
+                  backgroundColor: i === 0 ? '#1d4e32' : '#cbd5e1',
+                }}
+              />
+            ))}
+          </View>
+        )}
+
+        <View style={{ paddingHorizontal: 20, marginTop: reporte.fotos.length > 1 ? 0 : -24 }}>
 
           {/* Card principal */}
           <View
@@ -193,7 +212,7 @@ export function DetalleReporte({ id }: Props) {
               {reporte.usuario ? `por ${reporte.usuario.nombre ?? reporte.usuario.email}` : '(anónimo)'}
             </Text>
 
-            {/* Botones */}
+            {/* Botón votar */}
             <View
               style={{
                 flexDirection: 'row',
@@ -225,13 +244,13 @@ export function DetalleReporte({ id }: Props) {
                   {yaVote ? 'Votado' : 'Votar'} ({totalVotos})
                 </Text>
               </TouchableOpacity>
-
-              {!isAuthenticated && (
-                <Text style={{ fontSize: 11, color: '#737686', textAlign: 'center', marginTop: 4 }}>
-                  Inicia sesión para votar
-                </Text>
-              )}
             </View>
+
+            {!isAuthenticated && (
+              <Text style={{ fontSize: 11, color: '#737686', textAlign: 'center', marginTop: 8 }}>
+                Inicia sesión para votar
+              </Text>
+            )}
           </View>
 
           {/* Descripción */}
@@ -269,13 +288,7 @@ export function DetalleReporte({ id }: Props) {
                   marginTop: 12,
                 }}
               >
-                <View
-                  style={{
-                    backgroundColor: '#dbeafe',
-                    padding: 8,
-                    borderRadius: 999,
-                  }}
-                >
+                <View style={{ backgroundColor: '#dbeafe', padding: 8, borderRadius: 999 }}>
                   <Text style={{ fontSize: 16 }}>⚠️</Text>
                 </View>
                 <View style={{ flex: 1 }}>

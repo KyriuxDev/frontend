@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useReportes } from './reporte.queries';
 import { ReporteResumen, Categoria, EstadoReporte } from './reporte.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
+import { getImageUrl } from '@/src/utils/getImageUrl';
 
 const FILTROS: { label: string; value: Categoria | 'TODOS' }[] = [
   { label: 'Todos',           value: 'TODOS' },
@@ -33,7 +34,7 @@ function colorEstado(estado: EstadoReporte): { bg: string; text: string } {
   switch (estado) {
     case 'PENDIENTE':   return { bg: '#fef3c7', text: '#92400e' };
     case 'EN_PROCESO':  return { bg: '#dbeafe', text: '#1e40af' };
-    case 'RESUELTO':    return { bg: '#dcfce7', text: '#166534' };
+    case 'RESUELTO':    return { bg: '#dcfce7', text: '#166634' };
     case 'RECHAZADO':   return { bg: '#fee2e2', text: '#991b1b' };
   }
 }
@@ -63,7 +64,7 @@ function CardReporte({ reporte }: { reporte: ReporteResumen }) {
   const router = useRouter();
   const catColor    = colorCategoria(reporte.categoria);
   const estadoColor = colorEstado(reporte.estado);
-  const primeraFoto = reporte.fotos?.[0]?.url;
+  const primeraFotoUrl = getImageUrl(reporte.fotos?.[0]?.url);
 
   return (
     <TouchableOpacity
@@ -81,10 +82,9 @@ function CardReporte({ reporte }: { reporte: ReporteResumen }) {
         elevation: 2,
       }}
     >
-      {/* Imagen si existe */}
-      {primeraFoto && (
+      {primeraFotoUrl && (
         <Image
-          source={{ uri: primeraFoto }}
+          source={{ uri: primeraFotoUrl }}
           style={{ width: '100%', height: 128 }}
           resizeMode="cover"
         />
@@ -105,20 +105,16 @@ function CardReporte({ reporte }: { reporte: ReporteResumen }) {
           </View>
         </View>
 
-        {/* Título */}
         <Text style={{ fontSize: 18, fontWeight: '600', color: '#0b1c30' }}>
           {reporte.titulo}
         </Text>
 
-        {/* Comunidad */}
         <Text style={{ fontSize: 12, color: '#737686' }}>
           📍 {reporte.comunidad.nombre}
         </Text>
 
-        {/* Estrellas */}
         <Estrellas gravedad={reporte.gravedad} />
 
-        {/* Footer */}
         <View
           style={{
             flexDirection: 'row',
@@ -151,8 +147,6 @@ export function ListaReportes() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8f9ff' }}>
-
-      {/* Header */}
       <View
         style={{
           paddingHorizontal: 20,
@@ -186,8 +180,6 @@ export function ListaReportes() {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-
-          {/* Título */}
           <Text style={{ fontSize: 28, fontWeight: '700', color: '#0b1c30', letterSpacing: -0.5 }}>
             Lista de Reportes
           </Text>
@@ -228,7 +220,6 @@ export function ListaReportes() {
             ))}
           </ScrollView>
 
-          {/* Lista */}
           {isLoading && (
             <ActivityIndicator size="large" color="#1d4e32" style={{ marginTop: 40 }} />
           )}

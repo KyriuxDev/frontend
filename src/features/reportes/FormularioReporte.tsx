@@ -19,10 +19,10 @@ import * as ImagePicker from "expo-image-picker";
 import Slider from "@react-native-community/slider";
 import { crearReporteSchema, CrearReporteInput } from "./reporte.schema";
 import { useCrearReporte } from "./reporte.queries";
-import { Categoria } from "./reporte.types";
 import { useComunidades } from "@/src/features/comunidades/comunidad.queries";
 import MapPicker from "@/src/components/Map";
 import { MapView, Marker } from "@/src/components/MapViewWrapper";
+import { api } from "@/src/lib/axios";
 
 const CATEGORIAS = [
 	{ label: "BACHES Y PAVIMENTO", value: "INFRAESTRUCTURA", emoji: "🕳️" },
@@ -33,7 +33,8 @@ const CATEGORIAS = [
 
 export function FormularioReporte() {
 	const router = useRouter();
-	const { mutate: crear, isPending } = useCrearReporte();
+	const { mutateAsync: crearAsync, isPending } = useCrearReporte();
+	const [uploadingFotos, setUploadingFotos] = useState(false);
 
 	const [fotos, setFotos] = useState<string[]>([]);
 	const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
@@ -58,7 +59,6 @@ export function FormularioReporte() {
 		},
 	});
 
-	const categoriaActiva = watch("categoria");
 	const gravedadActiva = watch("gravedad");
 
 	useEffect(() => {
@@ -122,19 +122,54 @@ export function FormularioReporte() {
 		setFotos((prev) => prev.filter((f) => f !== uri));
 	}
 
-	const onSubmit = (data: CrearReporteInput) => {
-		crear(
-			{ ...data, fuente: "APP_MOVIL" }, // sin fotos locales
-			{
-				onError: (err: any) => {
-					const msg =
-						err?.response?.data?.error ??
-						JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
-					Alert.alert("Error del servidor", msg);
-				},
-			},
-		);
+	async function subirFotos(reporteId: number, uris: string[]) {
+		const formData = new FormData();
+		uris.forEach((uri, index) => {
+			const ext = uri.split(".").pop()?.toLowerCase() ?? "jpg";
+			const mime =
+				ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+			formData.append("fotos", {
+				uri,
+				name: `foto-${index}.${ext}`,
+				type: mime,
+			} as any);
+		});
+		await api.post(`/reportes/${reporteId}/fotos`, formData, {
+			headers: { "Content-Type": "multipart/form-data" },
+		});
+	}
+
+	const onSubmit = async (data: CrearReporteInput) => {
+		try {
+			const reporte = await crearAsync({ ...data, fuente: "APP_MOVIL" });
+
+			if (fotos.length > 0) {
+				setUploadingFotos(true);
+				try {
+					await subirFotos(reporte.id, fotos);
+				} catch {
+					// El reporte ya se creó; avisamos pero no bloqueamos
+					Alert.alert(
+						"Reporte creado",
+						"El reporte se registró correctamente, pero no se pudieron subir algunas fotos. Puedes agregarlas después desde el detalle del reporte.",
+					);
+					router.push("/(main)/reportes");
+					return;
+				} finally {
+					setUploadingFotos(false);
+				}
+			}
+
+			router.push("/(main)/reportes");
+		} catch (err: any) {
+			const msg =
+				err?.response?.data?.error ??
+				JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
+			Alert.alert("Error del servidor", msg);
+		}
 	};
+
+	const isSubmitting = isPending || uploadingFotos;
 
 	return (
 		<KeyboardAvoidingView
@@ -467,21 +502,28 @@ export function FormularioReporte() {
 							</ScrollView>
 						)}
 
+						{/* Contador de fotos */}
+						<Text style={{ fontSize: 11, color: "#737686" }}>
+							{fotos.length}/5 fotos seleccionadas
+						</Text>
+
 						{/* Botones de fotos */}
 						<View style={{ flexDirection: "row", gap: 8 }}>
 							<TouchableOpacity
 								onPress={tomarFoto}
+								disabled={fotos.length >= 5}
 								style={{
 									flex: 1,
 									padding: 14,
 									borderWidth: 2,
 									borderStyle: "dashed",
-									borderColor: "#c3c6d7",
+									borderColor: fotos.length >= 5 ? "#e2e8f0" : "#c3c6d7",
 									borderRadius: 8,
 									alignItems: "center",
 									flexDirection: "row",
 									justifyContent: "center",
 									gap: 6,
+									opacity: fotos.length >= 5 ? 0.5 : 1,
 								}}
 							>
 								<Text style={{ fontSize: 16 }}>📷</Text>
@@ -493,17 +535,19 @@ export function FormularioReporte() {
 							</TouchableOpacity>
 							<TouchableOpacity
 								onPress={seleccionarFotos}
+								disabled={fotos.length >= 5}
 								style={{
 									flex: 1,
 									padding: 14,
 									borderWidth: 2,
 									borderStyle: "dashed",
-									borderColor: "#c3c6d7",
+									borderColor: fotos.length >= 5 ? "#e2e8f0" : "#c3c6d7",
 									borderRadius: 8,
 									alignItems: "center",
 									flexDirection: "row",
 									justifyContent: "center",
 									gap: 6,
+									opacity: fotos.length >= 5 ? 0.5 : 1,
 								}}
 							>
 								<Text style={{ fontSize: 16 }}>🖼️</Text>
@@ -516,6 +560,7 @@ export function FormularioReporte() {
 						</View>
 					</View>
 
+					{/* Comunidad */}
 					<View
 						style={{
 							backgroundColor: "#fff",
@@ -592,26 +637,12 @@ export function FormularioReporte() {
 								marginBottom: 12,
 							}}
 						>
-							<View
-								style={{
-									flexDirection: "row",
-									alignItems: "center",
-									gap: 6,
-								}}
-							>
+							<View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
 								<Text style={{ fontSize: 16 }}>📍</Text>
-
-								<Text
-									style={{
-										fontSize: 14,
-										fontWeight: "600",
-										color: "#0b1c30",
-									}}
-								>
+								<Text style={{ fontSize: 14, fontWeight: "600", color: "#0b1c30" }}>
 									Confirmar Ubicación
 								</Text>
 							</View>
-
 							<TouchableOpacity
 								onPress={obtenerUbicacion}
 								style={{
@@ -621,13 +652,7 @@ export function FormularioReporte() {
 									borderRadius: 8,
 								}}
 							>
-								<Text
-									style={{
-										fontSize: 12,
-										fontWeight: "600",
-										color: "#004ac6",
-									}}
-								>
+								<Text style={{ fontSize: 12, fontWeight: "600", color: "#004ac6" }}>
 									Mi ubicación
 								</Text>
 							</TouchableOpacity>
@@ -647,13 +672,7 @@ export function FormularioReporte() {
 							}}
 						>
 							{loadingGPS ? (
-								<View
-									style={{
-										flex: 1,
-										alignItems: "center",
-										justifyContent: "center",
-									}}
-								>
+								<View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
 									<ActivityIndicator color="#004ac6" />
 								</View>
 							) : location ? (
@@ -669,13 +688,9 @@ export function FormularioReporte() {
 										}}
 									>
 										<Marker
-											coordinate={{
-												latitude: location.lat,
-												longitude: location.lng,
-											}}
+											coordinate={{ latitude: location.lat, longitude: location.lng }}
 										/>
 									</MapView>
-
 									<View
 										style={{
 											position: "absolute",
@@ -687,57 +702,24 @@ export function FormularioReporte() {
 											borderRadius: 10,
 										}}
 									>
-										<Text
-											style={{
-												fontSize: 12,
-												fontWeight: "700",
-												color: "#004ac6",
-											}}
-										>
+										<Text style={{ fontSize: 12, fontWeight: "700", color: "#004ac6" }}>
 											{location.lat.toFixed(5)}, {location.lng.toFixed(5)}
 										</Text>
-
-										<Text
-											style={{
-												fontSize: 11,
-												color: "#737686",
-												marginTop: 2,
-											}}
-										>
+										<Text style={{ fontSize: 11, color: "#737686", marginTop: 2 }}>
 											Toca para ajustar manualmente
 										</Text>
 									</View>
 								</>
 							) : (
-								<View
-									style={{
-										flex: 1,
-										alignItems: "center",
-										justifyContent: "center",
-										gap: 6,
-									}}
-								>
+								<View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
 									<Text style={{ fontSize: 36 }}>🗺️</Text>
-
-									<Text
-										style={{
-											fontSize: 12,
-											color: "#737686",
-										}}
-									>
+									<Text style={{ fontSize: 12, color: "#737686" }}>
 										Toca para seleccionar ubicación
 									</Text>
 								</View>
 							)}
 						</TouchableOpacity>
-
-						<Text
-							style={{
-								fontSize: 12,
-								color: "#737686",
-								marginTop: 8,
-							}}
-						>
+						<Text style={{ fontSize: 12, color: "#737686", marginTop: 8 }}>
 							ℹ️ Puedes mover el mapa para ajustar la ubicación exacta.
 						</Text>
 					</View>
@@ -745,10 +727,10 @@ export function FormularioReporte() {
 					{/* Botón enviar */}
 					<TouchableOpacity
 						onPress={handleSubmit(onSubmit)}
-						disabled={isPending || !location}
+						disabled={isSubmitting || !location}
 						style={{
 							height: 56,
-							backgroundColor: isPending || !location ? "#b4c5ff" : "#004ac6",
+							backgroundColor: isSubmitting || !location ? "#b4c5ff" : "#004ac6",
 							borderRadius: 12,
 							alignItems: "center",
 							justifyContent: "center",
@@ -761,13 +743,16 @@ export function FormularioReporte() {
 							elevation: 4,
 						}}
 					>
-						{isPending ? (
-							<ActivityIndicator color="#fff" />
+						{isSubmitting ? (
+							<View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+								<ActivityIndicator color="#fff" />
+								<Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>
+									{uploadingFotos ? "Subiendo fotos..." : "Enviando reporte..."}
+								</Text>
+							</View>
 						) : (
 							<>
-								<Text
-									style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}
-								>
+								<Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
 									Enviar Reporte
 								</Text>
 								<Text style={{ fontSize: 18 }}>📤</Text>
@@ -789,15 +774,14 @@ export function FormularioReporte() {
 					</Text>
 				</View>
 			</ScrollView>
+
 			<MapPicker
 				visible={mapVisible}
 				initialLocation={location}
 				onClose={() => setMapVisible(false)}
 				onSelectLocation={(coords) => {
 					setLocation(coords);
-
 					setValue("latitud", coords.lat);
-
 					setValue("longitud", coords.lng);
 				}}
 			/>
