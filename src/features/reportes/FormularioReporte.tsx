@@ -124,47 +124,76 @@ export function FormularioReporte() {
 
 	async function subirFotos(reporteId: number, uris: string[]) {
 		const formData = new FormData();
+
 		uris.forEach((uri, index) => {
-			const ext = uri.split(".").pop()?.toLowerCase() ?? "jpg";
+			const ext  = uri.split(".").pop()?.toLowerCase() ?? "jpg";
 			const mime =
-				ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+			ext === "png"  ? "image/png"  :
+			ext === "webp" ? "image/webp" : "image/jpeg";
+
 			formData.append("fotos", {
-				uri,
-				name: `foto-${index}.${ext}`,
-				type: mime,
+			uri,
+			name: `foto-${index}.${ext}`,
+			type: mime,
 			} as any);
 		});
-		await api.post(`/reportes/${reporteId}/fotos`, formData, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
-	}
+
+		// Obtener token (puede ser null si es anónimo)
+		const token =
+			Platform.OS === "web"
+			? localStorage.getItem("access_token")
+			: await (await import("expo-secure-store")).getItemAsync("access_token");
+
+		const baseURL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+		const response = await fetch(
+			`${baseURL}/reportes/${reporteId}/fotos`,
+			{
+			method: "POST",
+			headers: token
+				? { Authorization: `Bearer ${token}` }
+				: {},          // sin Content-Type — fetch pone el boundary solo
+			body: formData,
+			}
+		);
+
+		if (!response.ok) {
+			const body = await response.json().catch(() => ({}));
+			throw new Error(body?.error ?? `Error ${response.status}`);
+		}
+
+		return response.json();
+		}
 
 	const onSubmit = async (data: CrearReporteInput) => {
 		try {
 			const reporte = await crearAsync({ ...data, fuente: "APP_MOVIL" });
 
 			if (fotos.length > 0) {
-				setUploadingFotos(true);
-				try {
-					await subirFotos(reporte.id, fotos);
-				} catch {
-					// El reporte ya se creó; avisamos pero no bloqueamos
-					Alert.alert(
-						"Reporte creado",
-						"El reporte se registró correctamente, pero no se pudieron subir algunas fotos. Puedes agregarlas después desde el detalle del reporte.",
-					);
-					router.push("/(main)/reportes");
-					return;
-				} finally {
-					setUploadingFotos(false);
-				}
+			setUploadingFotos(true);
+			try {
+				await subirFotos(reporte.id, fotos);
+			} catch (err: any) {
+				console.error("Error al subir fotos:", JSON.stringify(err?.response?.data));
+				console.error("Status:", err?.response?.status);
+				console.error("Message:", err?.message);
+
+				Alert.alert(
+				"Debug fotos",
+				`Status: ${err?.response?.status}\nData: ${JSON.stringify(err?.response?.data)}\nMsg: ${err?.message}`
+				);
+				router.push("/(main)/reportes");
+				return;
+			} finally {
+				setUploadingFotos(false);
+			}
 			}
 
 			router.push("/(main)/reportes");
 		} catch (err: any) {
 			const msg =
-				err?.response?.data?.error ??
-				JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
+			err?.response?.data?.error ??
+			JSON.stringify(err?.response?.data?.errors ?? "Error desconocido");
 			Alert.alert("Error del servidor", msg);
 		}
 	};
