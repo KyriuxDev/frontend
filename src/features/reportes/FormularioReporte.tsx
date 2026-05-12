@@ -24,6 +24,7 @@ import MapPicker from "@/src/components/Map";
 import { MapView, Marker } from "@/src/components/MapViewWrapper";
 import { api } from "@/src/lib/axios";
 import { Ionicons } from '@expo/vector-icons';
+import { useOaxacaComunidades } from '@/src/hooks/useOaxaca';
 
 const CATEGORIAS = [
   { label: 'BACHES Y PAVIMENTO', value: 'INFRAESTRUCTURA', icon: 'construct-outline' },
@@ -42,7 +43,7 @@ export function FormularioReporte() {
 		null,
 	);
 	const [loadingGPS, setLoadingGPS] = useState(false);
-	const { data: comunidades } = useComunidades();
+	const { data: comunidades } = useOaxacaComunidades('ACTIVO');
 	const [mapVisible, setMapVisible] = useState(false);
 
 	const {
@@ -622,29 +623,24 @@ export function FormularioReporte() {
 								<View
 									style={{ gap: 8, flexDirection: "row", flexWrap: "wrap" }}
 								>
-									{(comunidades?.data ?? []).map((c) => (
+									{(comunidades ?? []).map((c: any) => (
 										<TouchableOpacity
 											key={c.id}
 											onPress={() => onChange(c.id)}
 											style={{
-												paddingHorizontal: 12,
-												paddingVertical: 8,
-												borderRadius: 8,
-												borderWidth: value === c.id ? 2 : 1,
-												borderColor: value === c.id ? "#004ac6" : "#c3c6d7",
-												backgroundColor: value === c.id ? "#eff4ff" : "#fff",
+											paddingHorizontal: 12,
+											paddingVertical: 8,
+											borderRadius: 8,
+											borderWidth: value === c.id ? 2 : 1,
+											borderColor: value === c.id ? '#004ac6' : '#c3c6d7',
+											backgroundColor: value === c.id ? '#eff4ff' : '#fff',
 											}}
 										>
-											<Text
-												style={{
-													fontSize: 13,
-													color: value === c.id ? "#004ac6" : "#434655",
-												}}
-											>
-												{c.nombre}
+											<Text style={{ fontSize: 13, color: value === c.id ? '#004ac6' : '#434655' }}>
+											{c.nombre}
 											</Text>
 										</TouchableOpacity>
-									))}
+										))}
 								</View>
 							)}
 						/>

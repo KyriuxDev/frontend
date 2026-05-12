@@ -5,6 +5,7 @@ import {
 import { useComunidades } from './comunidad.queries';
 import { ComunidadResumen } from './comunidad.types';
 import MapaComunidades from './MapaComunidades';
+import { useOaxacaComunidades } from '@/src/hooks/useOaxaca';
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -276,9 +277,8 @@ function AlertasSection({ criticas }: { criticas: ComunidadResumen[] }) {
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 export function ListaComunidades() {
-  const { data, isLoading, isError, refetch } = useComunidades();
-  const comunidades = data?.data ?? [];
-  const criticas    = comunidades.filter(c => c.irsuActual > 100);
+  const { data: comunidades = [], isLoading, isError, refetch } = useOaxacaComunidades('ACTIVO');
+  const criticas = comunidades.filter((c: any) => c.irsuActual > 100);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>

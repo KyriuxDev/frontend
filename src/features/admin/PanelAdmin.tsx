@@ -16,19 +16,18 @@ import {
 	useCambiarEstadoReporte,
 } from "@/src/features/reportes/reporte.queries";
 import {
-	useComunidades,
 	useActualizarComunidad,
-	useCrearComunidad,
 } from "@/src/features/comunidades/comunidad.queries";
 import {
 	ReporteResumen,
 	EstadoReporte,
 } from "@/src/features/reportes/reporte.types";
-import { ComunidadResumen } from "@/src/features/comunidades/comunidad.types";
 import { formatearFechaCorta } from "@/src/utils/formatDate";
 import { SeccionDashboard } from "./SeccionDashboard";
 import { useReporteStats } from "./dashboard.queries";
 import { Paginacion } from "@/src/components/pagination";
+import { SeccionCuadrillas } from "@/src/features/admin/SeccionCuadrillas";
+import { useOaxacaComunidades } from "@/src/hooks/useOaxaca";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 const C = {
@@ -55,38 +54,18 @@ const C = {
 	rojoDot: "#dc2626",
 };
 
-type Tab = "dashboard" | "reportes" | "comunidades" | "alertas" | "usuarios";
+type Tab = "dashboard" | "reportes" | "comunidades" | "alertas" | "usuarios" | "cuadrillas";
 
 function estadoCfg(e: EstadoReporte) {
 	switch (e) {
 		case "PENDIENTE":
-			return {
-				bg: C.amber,
-				text: C.amberText,
-				dot: C.amberDot,
-				label: "Pendiente",
-			};
+			return { bg: C.amber, text: C.amberText, dot: C.amberDot, label: "Pendiente" };
 		case "EN_PROCESO":
-			return {
-				bg: C.azul,
-				text: C.azulText,
-				dot: C.azulDot,
-				label: "En Proceso",
-			};
+			return { bg: C.azul, text: C.azulText, dot: C.azulDot, label: "En Proceso" };
 		case "RESUELTO":
-			return {
-				bg: C.verdeMid,
-				text: C.verdeText,
-				dot: "#16a34a",
-				label: "Resuelto",
-			};
+			return { bg: C.verdeMid, text: C.verdeText, dot: "#16a34a", label: "Resuelto" };
 		case "RECHAZADO":
-			return {
-				bg: C.rojo,
-				text: C.rojoText,
-				dot: C.rojoDot,
-				label: "Rechazado",
-			};
+			return { bg: C.rojo, text: C.rojoText, dot: C.rojoDot, label: "Rechazado" };
 	}
 }
 
@@ -99,21 +78,12 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-	{ key: "dashboard", label: "Dashboard", icon: "dashboard" },
-	{
-		key: "reportes",
-		label: "Reportes",
-		icon: "assessment",
-		badge: { n: 12, color: C.amberText, bg: C.amber },
-	},
-	{ key: "comunidades", label: "Comunidades", icon: "groups" },
-	{
-		key: "alertas",
-		label: "Alertas",
-		icon: "notifications",
-		badge: { n: 3, color: C.rojoText, bg: C.rojo },
-	},
-	{ key: "usuarios", label: "Usuarios", icon: "manage-accounts" },
+	{ key: "dashboard",   label: "Dashboard",    icon: "dashboard"       },
+	{ key: "reportes",    label: "Reportes",     icon: "assessment",     badge: { n: 12, color: C.amberText, bg: C.amber } },
+	{ key: "comunidades", label: "Comunidades",  icon: "groups"          },
+	{ key: "cuadrillas",  label: "Cuadrillas",   icon: "engineering"     },
+	{ key: "alertas",     label: "Alertas",      icon: "notifications",  badge: { n: 3, color: C.rojoText, bg: C.rojo } },
+	{ key: "usuarios",    label: "Usuarios",     icon: "manage-accounts" },
 ];
 
 const NAV_FOOTER: {
@@ -121,7 +91,7 @@ const NAV_FOOTER: {
 	label: string;
 }[] = [
 	{ icon: "settings", label: "Ajustes" },
-	{ icon: "logout", label: "Cerrar sesión" },
+	{ icon: "logout",   label: "Cerrar sesión" },
 ];
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
@@ -215,7 +185,6 @@ function Sidebar({
 									position: "relative",
 								}}
 							>
-								{/* Indicador activo */}
 								{activo && (
 									<View
 										style={{
@@ -229,13 +198,11 @@ function Sidebar({
 										}}
 									/>
 								)}
-
 								<MaterialIcons
 									name={item.icon}
 									size={22}
 									color={activo ? C.verde : C.textoMuted}
 								/>
-
 								<Text
 									style={{
 										fontSize: 14,
@@ -246,7 +213,6 @@ function Sidebar({
 								>
 									{item.label}
 								</Text>
-
 								{item.badge && (
 									<View
 										style={{
@@ -273,7 +239,7 @@ function Sidebar({
 				</View>
 			</ScrollView>
 
-			{/* Footer: ajustes + cerrar sesión + usuario */}
+			{/* Footer */}
 			<View style={{ borderTopWidth: 1, borderTopColor: C.bordeLight }}>
 				{NAV_FOOTER.map((item) => (
 					<TouchableOpacity
@@ -290,9 +256,7 @@ function Sidebar({
 						}}
 					>
 						<MaterialIcons name={item.icon} size={20} color={C.textoMuted} />
-						<Text
-							style={{ fontSize: 14, color: C.textoSub, fontWeight: "500" }}
-						>
+						<Text style={{ fontSize: 14, color: C.textoSub, fontWeight: "500" }}>
 							{item.label}
 						</Text>
 					</TouchableOpacity>
@@ -349,18 +313,20 @@ function Sidebar({
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 const TITULOS: Record<Tab, string> = {
-	dashboard: "IRSU Dashboard",
-	reportes: "Gestión de Reportes",
+	dashboard:   "IRSU Dashboard",
+	reportes:    "Gestión de Reportes",
 	comunidades: "Gestión de Comunidades",
-	alertas: "Alertas Activas",
-	usuarios: "Gestión de Usuarios",
+	cuadrillas:  "Gestión de Cuadrillas",
+	alertas:     "Alertas Activas",
+	usuarios:    "Gestión de Usuarios",
 };
 const SUBS: Record<Tab, string> = {
-	dashboard: "Resumen general del sistema",
-	reportes: "Revisa y actualiza el estado de incidencias ciudadanas",
+	dashboard:   "Resumen general del sistema",
+	reportes:    "Revisa y actualiza el estado de incidencias ciudadanas",
 	comunidades: "Administra y activa comunidades del municipio",
-	alertas: "Gestiona alertas críticas del sistema",
-	usuarios: "Administra roles y permisos",
+	cuadrillas:  "Asigna cuadrillas según prioridad IRSU",
+	alertas:     "Gestiona alertas críticas del sistema",
+	usuarios:    "Administra roles y permisos",
 };
 
 function TopBar({ tab, usuario }: { tab: Tab; usuario: any }) {
@@ -392,18 +358,13 @@ function TopBar({ tab, usuario }: { tab: Tab; usuario: any }) {
 			</View>
 
 			<View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-				{/* Botones de acción */}
 				<TouchableOpacity>
 					<MaterialIcons name="notifications" size={22} color={C.textoMuted} />
 				</TouchableOpacity>
 				<TouchableOpacity>
 					<MaterialIcons name="help-outline" size={22} color={C.textoMuted} />
 				</TouchableOpacity>
-
-				{/* Separador */}
 				<View style={{ width: 1, height: 28, backgroundColor: C.borde }} />
-
-				{/* Info usuario */}
 				<View style={{ alignItems: "flex-end" }}>
 					<Text
 						style={{
@@ -419,7 +380,6 @@ function TopBar({ tab, usuario }: { tab: Tab; usuario: any }) {
 						{usuario?.nombre ?? usuario?.email}
 					</Text>
 				</View>
-
 				<View
 					style={{
 						width: 32,
@@ -436,8 +396,6 @@ function TopBar({ tab, usuario }: { tab: Tab; usuario: any }) {
 						{ini}
 					</Text>
 				</View>
-
-				{/* Pill sistema activo */}
 				<View
 					style={{
 						flexDirection: "row",
@@ -723,65 +681,31 @@ function FilaReporte({ reporte }: { reporte: ReporteResumen }) {
 // ─── Sección Reportes ─────────────────────────────────────────────────────────
 function SeccionReportes() {
 	const [filtro, setFiltro] = useState<EstadoReporte | undefined>(undefined);
-  const [page, setPage] = useState(1);
-	const { data, isLoading, isError, refetch } = useReportes({ estado: filtro, page, });
-	const { data: stats, isLoading: isStatsLoading } = useReporteStats();
-  const totalPages = data?.meta?.totalPages ?? 1;
+	const [page, setPage] = useState(1);
+	const { data, isLoading, isError, refetch } = useReportes({ estado: filtro, page });
+	const { data: stats } = useReporteStats();
+	const totalPages = data?.meta?.totalPages ?? 1;
 
 	const FILTROS = [
-		{ label: "Todos", value: undefined },
-		{ label: "Pendiente", value: "PENDIENTE" as EstadoReporte },
+		{ label: "Todos",      value: undefined },
+		{ label: "Pendiente",  value: "PENDIENTE"  as EstadoReporte },
 		{ label: "En Proceso", value: "EN_PROCESO" as EstadoReporte },
-		{ label: "Resuelto", value: "RESUELTO" as EstadoReporte },
-		{ label: "Rechazado", value: "RECHAZADO" as EstadoReporte },
+		{ label: "Resuelto",   value: "RESUELTO"   as EstadoReporte },
+		{ label: "Rechazado",  value: "RECHAZADO"  as EstadoReporte },
 	];
 
 	return (
 		<ScrollView showsVerticalScrollIndicator={false}>
 			{/* Stats */}
-			<View
-				style={{
-					flexDirection: "row",
-					gap: 12,
-					marginBottom: 20,
-					flexWrap: "wrap",
-				}}
-			>
-				<StatCard
-					label="Pendientes"
-					value={stats?.PENDIENTE ?? 0}
-					icon="pending"
-					topColor={C.amberDot}
-				/>
-				<StatCard
-					label="En Proceso"
-					value={stats?.EN_PROCESO ?? 0}
-					icon="sync"
-					topColor={C.azulDot}
-				/>
-				<StatCard
-					label="Resueltos"
-					value={stats?.RESUELTO ?? 0}
-					icon="check-circle"
-					topColor="#16a34a"
-				/>
-				<StatCard
-					label="Rechazados"
-					value={stats?.RECHAZADO ?? 0}
-					icon="cancel"
-					topColor={C.rojoDot}
-				/>
+			<View style={{ flexDirection: "row", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+				<StatCard label="Pendientes" value={stats?.PENDIENTE  ?? 0} icon="pending"      topColor={C.amberDot} />
+				<StatCard label="En Proceso" value={stats?.EN_PROCESO ?? 0} icon="sync"         topColor={C.azulDot}  />
+				<StatCard label="Resueltos"  value={stats?.RESUELTO   ?? 0} icon="check-circle" topColor="#16a34a"    />
+				<StatCard label="Rechazados" value={stats?.RECHAZADO  ?? 0} icon="cancel"       topColor={C.rojoDot}  />
 			</View>
 
 			{/* Filtros */}
-			<View
-				style={{
-					flexDirection: "row",
-					flexWrap: "wrap",
-					gap: 8,
-					marginBottom: 16,
-				}}
-			>
+			<View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
 				{FILTROS.map((f) => {
 					const activo = filtro === f.value;
 					return (
@@ -824,26 +748,10 @@ function SeccionReportes() {
 					borderColor: C.borde,
 				}}
 			>
-				<Text
-					style={{
-						flex: 1,
-						fontSize: 10,
-						fontWeight: "700",
-						color: C.textoMuted,
-						letterSpacing: 0.5,
-					}}
-				>
+				<Text style={{ flex: 1, fontSize: 10, fontWeight: "700", color: C.textoMuted, letterSpacing: 0.5 }}>
 					REPORTE
 				</Text>
-				<Text
-					style={{
-						fontSize: 10,
-						fontWeight: "700",
-						color: C.textoMuted,
-						letterSpacing: 0.5,
-						marginRight: 90,
-					}}
-				>
+				<Text style={{ fontSize: 10, fontWeight: "700", color: C.textoMuted, letterSpacing: 0.5, marginRight: 90 }}>
 					ESTADO
 				</Text>
 			</View>
@@ -851,9 +759,7 @@ function SeccionReportes() {
 			{isLoading && (
 				<View style={{ alignItems: "center", paddingVertical: 40 }}>
 					<ActivityIndicator color={C.verde} size="large" />
-					<Text style={{ color: C.textoMuted, marginTop: 10 }}>
-						Cargando reportes...
-					</Text>
+					<Text style={{ color: C.textoMuted, marginTop: 10 }}>Cargando reportes...</Text>
 				</View>
 			)}
 			{isError && (
@@ -876,21 +782,19 @@ function SeccionReportes() {
 			{!isLoading && !isError && (data?.data ?? []).length === 0 && (
 				<View style={{ alignItems: "center", paddingVertical: 60, gap: 12 }}>
 					<MaterialIcons name="inbox" size={48} color={C.textoMuted} />
-					<Text style={{ color: C.textoMuted }}>
-						No hay reportes con este filtro
-					</Text>
+					<Text style={{ color: C.textoMuted }}>No hay reportes con este filtro</Text>
 				</View>
 			)}
 
 			{(data?.data ?? []).map((r) => (
 				<FilaReporte key={r.id} reporte={r} />
 			))}
-      <Paginacion
-        page={page}
-        totalPages={totalPages}
-        onPrev={() => setPage((p) => Math.max(1, p - 1))}
-        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
-      />
+			<Paginacion
+				page={page}
+				totalPages={totalPages}
+				onPrev={() => setPage((p) => Math.max(1, p - 1))}
+				onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+			/>
 			<View style={{ height: 40 }} />
 		</ScrollView>
 	);
@@ -898,170 +802,73 @@ function SeccionReportes() {
 
 // ─── Sección Comunidades ──────────────────────────────────────────────────────
 function SeccionComunidades() {
-	const [mostrarForm, setMostrarForm] = useState(false);
-	const [nombre, setNombre] = useState("");
-	const [municipioId, setMunicipioId] = useState("");
-
-	const { data, isLoading } = useComunidades();
+	const [busqueda, setBusqueda] = useState("");
+	const { data, isLoading }                       = useOaxacaComunidades();
 	const { mutate: activar, isPending: activando } = useActualizarComunidad();
-	const { mutate: crear, isPending: creando } = useCrearComunidad();
 
-	const comunidades = data?.data ?? [];
-	const activas = comunidades.filter((c) => c.status === "ACTIVO").length;
-	const pendientes = comunidades.filter((c) => c.status === "PENDIENTE").length;
+	const comunidades = data ?? [];
+
+	const comunidadesFiltradas = comunidades.filter((c: any) =>
+		c.nombre.toLowerCase().includes(busqueda.toLowerCase()),
+	);
+
+	const activas    = comunidades.filter((c: any) => c.status === "ACTIVO").length;
+	const pendientes = comunidades.filter((c: any) => c.status === "PENDIENTE").length;
 
 	const irsuColor = (v: number) =>
 		v > 100 ? C.rojoDot : v > 50 ? C.amberDot : "#16a34a";
+
 	const statusCfg = (s: string) => {
-		if (s === "ACTIVO")
-			return { bg: C.verdeMid, text: C.verdeText, dot: "#16a34a" };
-		if (s === "PENDIENTE")
-			return { bg: C.amber, text: C.amberText, dot: C.amberDot };
-		if (s === "RECHAZADO")
-			return { bg: C.rojo, text: C.rojoText, dot: C.rojoDot };
+		if (s === "ACTIVO")    return { bg: C.verdeMid, text: C.verdeText, dot: "#16a34a" };
+		if (s === "PENDIENTE") return { bg: C.amber,    text: C.amberText, dot: C.amberDot };
+		if (s === "RECHAZADO") return { bg: C.rojo,     text: C.rojoText,  dot: C.rojoDot };
 		return { bg: "#f1f5f9", text: "#64748b", dot: "#94a3b8" };
 	};
 
 	return (
-		<ScrollView showsVerticalScrollIndicator={false}>
+		<View style={{ flex: 1 }}>
+			{/* Stats */}
 			<View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
-				<StatCard
-					label="Activas"
-					value={activas}
-					icon="location-city"
-					topColor={C.verde}
-				/>
-				<StatCard
-					label="Pendientes"
-					value={pendientes}
-					icon="pending"
-					topColor={C.amberDot}
-				/>
+				<StatCard label="Activas"    value={activas}    icon="location-city" topColor={C.verde}    />
+				<StatCard label="Pendientes" value={pendientes} icon="pending"       topColor={C.amberDot} />
 			</View>
 
-			<TouchableOpacity
-				onPress={() => setMostrarForm(!mostrarForm)}
+			{/* Buscador */}
+			<View
 				style={{
-					backgroundColor: mostrarForm ? C.rojoDot : C.verde,
-					borderRadius: 10,
-					padding: 14,
 					flexDirection: "row",
-					justifyContent: "center",
 					alignItems: "center",
-					gap: 8,
-					marginBottom: 16,
+					gap: 10,
+					backgroundColor: C.blanco,
+					borderRadius: 10,
+					borderWidth: 1,
+					borderColor: C.borde,
+					paddingHorizontal: 12,
+					paddingVertical: 8,
+					marginBottom: 14,
 				}}
 			>
-				<MaterialIcons
-					name={mostrarForm ? "close" : "add"}
-					size={20}
-					color="#fff"
+				<MaterialIcons name="search" size={20} color={C.textoMuted} />
+				<TextInput
+					value={busqueda}
+					onChangeText={setBusqueda}
+					placeholder="Buscar comunidad..."
+					placeholderTextColor={C.textoMuted}
+					style={{ flex: 1, fontSize: 14, color: C.texto }}
 				/>
-				<Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
-					{mostrarForm ? "Cancelar" : "Nueva comunidad"}
-				</Text>
-			</TouchableOpacity>
-
-			{mostrarForm && (
-				<View
-					style={{
-						backgroundColor: C.blanco,
-						borderRadius: 12,
-						padding: 20,
-						borderWidth: 1,
-						borderColor: C.borde,
-						marginBottom: 16,
-						gap: 12,
-					}}
-				>
-					<Text style={{ fontSize: 14, fontWeight: "700", color: C.texto }}>
-						Nueva Comunidad
-					</Text>
-					{[
-						{
-							label: "NOMBRE",
-							val: nombre,
-							set: setNombre,
-							ph: "Ej: Colonia Centro",
-							kb: "default" as const,
-						},
-						{
-							label: "ID MUNICIPIO",
-							val: municipioId,
-							set: setMunicipioId,
-							ph: "Número entero",
-							kb: "numeric" as const,
-						},
-					].map((f) => (
-						<View key={f.label}>
-							<Text
-								style={{
-									fontSize: 10,
-									fontWeight: "700",
-									color: C.textoMuted,
-									letterSpacing: 0.5,
-									marginBottom: 6,
-								}}
-							>
-								{f.label}
-							</Text>
-							<TextInput
-								value={f.val}
-								onChangeText={f.set}
-								placeholder={f.ph}
-								placeholderTextColor={C.textoMuted}
-								keyboardType={f.kb}
-								style={{
-									borderWidth: 1,
-									borderColor: C.borde,
-									borderRadius: 8,
-									padding: 10,
-									fontSize: 14,
-									color: C.texto,
-									backgroundColor: "#f9fafb",
-								}}
-							/>
-						</View>
-					))}
-					<TouchableOpacity
-						onPress={() => {
-							if (!nombre.trim() || !municipioId.trim()) {
-								Alert.alert("Error", "Nombre y municipioId son obligatorios");
-								return;
-							}
-							crear(
-								{ nombre: nombre.trim(), municipioId: parseInt(municipioId) },
-								{
-									onSuccess: () => {
-										setNombre("");
-										setMunicipioId("");
-										setMostrarForm(false);
-									},
-									onError: (err: any) =>
-										Alert.alert(
-											"Error",
-											err?.response?.data?.error ?? "No se pudo crear",
-										),
-								},
-							);
-						}}
-						disabled={creando}
-						style={{
-							backgroundColor: creando ? "#86efac" : C.verde,
-							borderRadius: 8,
-							padding: 12,
-							alignItems: "center",
-						}}
-					>
-						{creando ? (
-							<ActivityIndicator color="#fff" />
-						) : (
-							<Text style={{ color: "#fff", fontWeight: "700" }}>
-								Crear comunidad
-							</Text>
-						)}
+				{busqueda.length > 0 && (
+					<TouchableOpacity onPress={() => setBusqueda("")}>
+						<MaterialIcons name="close" size={18} color={C.textoMuted} />
 					</TouchableOpacity>
-				</View>
+				)}
+			</View>
+
+			{/* Contador resultados */}
+			{busqueda.length > 0 && (
+				<Text style={{ fontSize: 12, color: C.textoMuted, marginBottom: 8 }}>
+					{comunidadesFiltradas.length} resultado
+					{comunidadesFiltradas.length !== 1 ? "s" : ""} para "{busqueda}"
+				</Text>
 			)}
 
 			{/* Encabezado tabla */}
@@ -1077,147 +884,130 @@ function SeccionComunidades() {
 					borderColor: C.borde,
 				}}
 			>
-				<Text
-					style={{
-						flex: 1,
-						fontSize: 10,
-						fontWeight: "700",
-						color: C.textoMuted,
-						letterSpacing: 0.5,
-					}}
-				>
+				<Text style={{ flex: 1, fontSize: 10, fontWeight: "700", color: C.textoMuted, letterSpacing: 0.5 }}>
 					COMUNIDAD
 				</Text>
-				<Text
-					style={{
-						fontSize: 10,
-						fontWeight: "700",
-						color: C.textoMuted,
-						letterSpacing: 0.5,
-						marginRight: 60,
-					}}
-				>
+				<Text style={{ fontSize: 10, fontWeight: "700", color: C.textoMuted, letterSpacing: 0.5, marginRight: 60 }}>
 					IRSU
 				</Text>
-				<Text
-					style={{
-						fontSize: 10,
-						fontWeight: "700",
-						color: C.textoMuted,
-						letterSpacing: 0.5,
-					}}
-				>
+				<Text style={{ fontSize: 10, fontWeight: "700", color: C.textoMuted, letterSpacing: 0.5 }}>
 					ESTADO
 				</Text>
 			</View>
 
-			{isLoading && (
-				<ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />
-			)}
+			{/* Lista */}
+			<ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+				{isLoading && (
+					<ActivityIndicator color={C.verde} style={{ marginTop: 20 }} />
+				)}
 
-			{comunidades.map((com) => {
-				const s = statusCfg(com.status);
-				return (
-					<View
-						key={com.id}
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							gap: 10,
-							backgroundColor: C.blanco,
-							borderRadius: 8,
-							borderWidth: 1,
-							borderColor: C.borde,
-							padding: 12,
-							marginBottom: 6,
-						}}
-					>
-						<View
-							style={{
-								width: 9,
-								height: 9,
-								borderRadius: 99,
-								backgroundColor: irsuColor(com.irsuActual),
-							}}
-						/>
-						<View style={{ flex: 1 }}>
-							<Text
-								style={{ fontSize: 13.5, fontWeight: "600", color: C.texto }}
-							>
-								{com.nombre}
-							</Text>
-							<Text style={{ fontSize: 11, color: C.textoMuted }}>
-								{com.municipio.nombre}
-							</Text>
-						</View>
-						<Text
-							style={{
-								fontSize: 15,
-								fontWeight: "800",
-								color: irsuColor(com.irsuActual),
-								minWidth: 50,
-								textAlign: "right",
-							}}
-						>
-							{com.irsuActual.toFixed(1)}
+				{!isLoading && comunidadesFiltradas.length === 0 && (
+					<View style={{ alignItems: "center", paddingVertical: 40, gap: 12 }}>
+						<MaterialIcons name="search-off" size={48} color={C.textoMuted} />
+						<Text style={{ color: C.textoMuted }}>
+							{busqueda.length > 0
+								? `Sin resultados para "${busqueda}"`
+								: "No hay comunidades registradas"}
 						</Text>
+					</View>
+				)}
+
+				{comunidadesFiltradas.map((com: any) => {
+					const s = statusCfg(com.status);
+					return (
 						<View
+							key={com.id}
 							style={{
 								flexDirection: "row",
 								alignItems: "center",
-								gap: 5,
-								backgroundColor: s.bg,
-								paddingHorizontal: 9,
-								paddingVertical: 3,
-								borderRadius: 99,
-								minWidth: 90,
-								justifyContent: "center",
+								gap: 10,
+								backgroundColor: C.blanco,
+								borderRadius: 8,
+								borderWidth: 1,
+								borderColor: C.borde,
+								padding: 12,
+								marginBottom: 6,
 							}}
 						>
 							<View
 								style={{
-									width: 6,
-									height: 6,
-									borderRadius: 3,
-									backgroundColor: s.dot,
+									width: 9,
+									height: 9,
+									borderRadius: 99,
+									backgroundColor: irsuColor(com.irsuActual),
 								}}
 							/>
-							<Text style={{ fontSize: 10, fontWeight: "700", color: s.text }}>
-								{com.status}
-							</Text>
-						</View>
-						{com.status === "PENDIENTE" && (
-							<TouchableOpacity
-								disabled={activando}
-								onPress={() =>
-									Alert.alert("Activar", `¿Activar "${com.nombre}"?`, [
-										{ text: "Cancelar", style: "cancel" },
-										{
-											text: "Activar",
-											onPress: () =>
-												activar({ slug: com.slug, dto: { status: "ACTIVO" } }),
-										},
-									])
-								}
+							<View style={{ flex: 1 }}>
+								<Text style={{ fontSize: 13.5, fontWeight: "600", color: C.texto }}>
+									{com.nombre}
+								</Text>
+								<Text style={{ fontSize: 11, color: C.textoMuted }}>
+									{com.municipio?.nombre}
+								</Text>
+							</View>
+							<Text
 								style={{
-									backgroundColor: C.verde,
-									paddingHorizontal: 14,
-									paddingVertical: 6,
-									borderRadius: 7,
+									fontSize: 15,
+									fontWeight: "800",
+									color: irsuColor(com.irsuActual),
+									minWidth: 50,
+									textAlign: "right",
 								}}
 							>
-								<Text
-									style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}
-								>
-									Activar
+								{com.irsuActual?.toFixed(1)}
+							</Text>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									gap: 5,
+									backgroundColor: s.bg,
+									paddingHorizontal: 9,
+									paddingVertical: 3,
+									borderRadius: 99,
+									minWidth: 90,
+									justifyContent: "center",
+								}}
+							>
+								<View
+									style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.dot }}
+								/>
+								<Text style={{ fontSize: 10, fontWeight: "700", color: s.text }}>
+									{com.status}
 								</Text>
-							</TouchableOpacity>
-						)}
-					</View>
-				);
-			})}
-			<View style={{ height: 40 }} />
-		</ScrollView>
+							</View>
+							{com.status === "PENDIENTE" && (
+								<TouchableOpacity
+									disabled={activando}
+									onPress={() =>
+										Alert.alert("Activar comunidad", `¿Activar "${com.nombre}"?`, [
+											{ text: "Cancelar", style: "cancel" },
+											{
+												text: "Activar",
+												onPress: () =>
+													activar({ slug: com.slug, dto: { status: "ACTIVO" } }),
+											},
+										])
+									}
+									style={{
+										backgroundColor: C.verde,
+										paddingHorizontal: 14,
+										paddingVertical: 6,
+										borderRadius: 7,
+									}}
+								>
+									<Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>
+										Activar
+									</Text>
+								</TouchableOpacity>
+							)}
+						</View>
+					);
+				})}
+
+				<View style={{ height: 40 }} />
+			</ScrollView>
+		</View>
 	);
 }
 
@@ -1239,12 +1029,8 @@ function Proximamente({
 			}}
 		>
 			<MaterialIcons name={icon} size={56} color={C.textoMuted} />
-			<Text style={{ fontSize: 20, fontWeight: "700", color: C.texto }}>
-				{label}
-			</Text>
-			<Text style={{ fontSize: 14, color: C.textoMuted }}>
-				Próximamente disponible
-			</Text>
+			<Text style={{ fontSize: 20, fontWeight: "700", color: C.texto }}>{label}</Text>
+			<Text style={{ fontSize: 14, color: C.textoMuted }}>Próximamente disponible</Text>
 		</View>
 	);
 }
@@ -1286,13 +1072,7 @@ export function PanelAdmin() {
 						>
 							IRSU Admin
 						</Text>
-						<Text
-							style={{
-								fontSize: 12,
-								color: "rgba(255,255,255,.7)",
-								marginTop: 2,
-							}}
-						>
+						<Text style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginTop: 2 }}>
 							{usuario?.rol} · {usuario?.nombre ?? usuario?.email}
 						</Text>
 					</View>
@@ -1350,15 +1130,12 @@ export function PanelAdmin() {
 
 				{/* Contenido */}
 				<View style={{ flex: 1, padding: esWeb ? 28 : 14 }}>
-					{tab === "reportes" && <SeccionReportes />}
+					{tab === "dashboard"   && <SeccionDashboard />}
+					{tab === "reportes"    && <SeccionReportes />}
 					{tab === "comunidades" && <SeccionComunidades />}
-					{tab === "alertas" && (
-						<Proximamente icon="notifications" label="Alertas" />
-					)}
-					{tab === "usuarios" && (
-						<Proximamente icon="manage-accounts" label="Usuarios" />
-					)}
-					{tab === "dashboard" && <SeccionDashboard />}
+					{tab === "cuadrillas"  && <SeccionCuadrillas />}
+					{tab === "alertas"     && <Proximamente icon="notifications"   label="Alertas"  />}
+					{tab === "usuarios"    && <Proximamente icon="manage-accounts" label="Usuarios" />}
 				</View>
 			</View>
 		</View>
