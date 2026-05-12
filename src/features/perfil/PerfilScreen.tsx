@@ -11,6 +11,7 @@ import { useProfile } from '@/src/hooks/useProfile';
 import { useDebounce } from '@/src/hooks/useDebounce';
 import { ReporteResumen, EstadoReporte, Categoria } from '@/src/features/reportes/reporte.types';
 import { formatearFechaCorta } from '@/src/utils/formatDate';
+import { getImageUrl } from '@/src/utils/getImageUrl';
 import type { ComunidadUsuario } from '@/src/features/auth/auth.types';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -57,15 +58,22 @@ function CardReportePerfil({ reporte, onPress }: { reporte: ReporteResumen; onPr
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: cat.border, marginBottom: 10 }}
+      style={{
+        backgroundColor: '#fff', borderRadius: 12, padding: 14,
+        borderLeftWidth: 4, borderLeftColor: cat.border, marginBottom: 10,
+      }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
         <View style={{ backgroundColor: cat.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
           <Text style={{ fontSize: 11, fontWeight: '600', color: cat.text }}>{reporte.categoria}</Text>
         </View>
       </View>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30', marginBottom: 4 }} numberOfLines={1}>{reporte.titulo}</Text>
-      <Text style={{ fontSize: 12, color: '#737686', marginBottom: 8 }} numberOfLines={1}>{reporte.comunidad.nombre}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: '#0b1c30', marginBottom: 4 }} numberOfLines={1}>
+        {reporte.titulo}
+      </Text>
+      <Text style={{ fontSize: 12, color: '#737686', marginBottom: 8 }} numberOfLines={1}>
+        {reporte.comunidad.nombre}
+      </Text>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Text style={{ fontSize: 11, color: '#94a3b8' }}>{formatearFechaCorta(reporte.createdAt)}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -77,6 +85,53 @@ function CardReportePerfil({ reporte, onPress }: { reporte: ReporteResumen; onPr
   );
 }
 
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+function Avatar({
+  avatarUrl, iniciales, size = 96, onPress,
+}: {
+  avatarUrl?: string | null;
+  iniciales: string;
+  size?: number;
+  onPress?: () => void;
+}) {
+  const url = getImageUrl(avatarUrl);
+  const radius = size / 2;
+
+  const inner = url ? (
+    <Image
+      source={{ uri: url }}
+      style={{ width: size, height: size, borderRadius: radius }}
+      // Si la imagen falla (URL válida pero archivo no encontrado) cae al fallback
+      onError={() => {/* no-op; React Native ocultará la imagen rota */}}
+    />
+  ) : (
+    <View style={{
+      width: size, height: size, borderRadius: radius,
+      backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Text style={{ fontSize: size * 0.375, fontWeight: '700', color: '#fff' }}>{iniciales}</Text>
+    </View>
+  );
+
+  if (!onPress) return inner;
+
+  return (
+    <TouchableOpacity onPress={onPress} style={{ position: 'relative' }}>
+      {inner}
+      <View style={{
+        position: 'absolute', bottom: 0, right: 0,
+        backgroundColor: ACCENT, borderRadius: 12,
+        width: 26, height: 26,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 2, borderColor: '#fff',
+      }}>
+        <Text style={{ color: '#fff', fontSize: 12 }}>✏️</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Screen principal ─────────────────────────────────────────────────────────
 export function PerfilScreen() {
   const router     = useRouter();
   const { logout } = useAuthStore();
@@ -109,7 +164,9 @@ export function PerfilScreen() {
     if (busquedaDebounced.length < 3) { setResultadosCP([]); return; }
     setBuscando(true);
     buscarComunidades(busquedaDebounced)
-      .then((data: any) => setResultadosCP(Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : [])))
+      .then((data: any) =>
+        setResultadosCP(Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []))
+      )
       .finally(() => setBuscando(false));
   }, [busquedaDebounced]);
 
@@ -138,7 +195,10 @@ export function PerfilScreen() {
   };
 
   const handleEliminar = (c: ComunidadUsuario) => {
-    if (c.esPrincipal) { Alert.alert('No permitido', 'No puedes eliminar tu comunidad principal'); return; }
+    if (c.esPrincipal) {
+      Alert.alert('No permitido', 'No puedes eliminar tu comunidad principal');
+      return;
+    }
     Alert.alert('Eliminar', `¿Quitar ${c.nombre}?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => eliminarComunidad(c.comunidadId) },
@@ -154,32 +214,46 @@ export function PerfilScreen() {
     <View style={{ flex: 1, backgroundColor: '#f8f9ff' }}>
 
       {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 52, paddingBottom: 12, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+      <View style={{
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: 20, paddingTop: 52, paddingBottom: 12,
+        backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+      }}>
         <Text style={{ fontSize: 22, fontWeight: '900', color: PRIMARY, letterSpacing: -0.5 }}>IRSU</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPerfil} tintColor={PRIMARY} />}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPerfil} tintColor={PRIMARY} />}
+      >
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 120 }}>
 
-          {/* Avatar */}
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 16 }}>
-            <TouchableOpacity onPress={handleAvatar} style={{ position: 'relative', marginBottom: 16 }}>
-              {usuario?.avatarUrl ? (
-                <Image source={{ uri: usuario.avatarUrl }} style={{ width: 96, height: 96, borderRadius: 48 }} />
-              ) : (
-                <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 36, fontWeight: '700', color: '#fff' }}>{iniciales}</Text>
-                </View>
-              )}
-              <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: ACCENT, borderRadius: 12, width: 26, height: 26, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
-                <Text style={{ color: '#fff', fontSize: 12 }}>✏️</Text>
-              </View>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: '#0b1c30', marginBottom: 4 }}>{usuario?.nombre ?? 'Sin nombre'}</Text>
-            <Text style={{ fontSize: 14, color: '#737686', marginBottom: 14 }}>{usuario?.email}</Text>
+          {/* Avatar + info */}
+          <View style={{
+            backgroundColor: '#fff', borderRadius: 16, padding: 24,
+            alignItems: 'center', marginBottom: 16,
+          }}>
+            <View style={{ marginBottom: 16 }}>
+              <Avatar
+                avatarUrl={usuario?.avatarUrl}
+                iniciales={iniciales}
+                size={96}
+                onPress={handleAvatar}
+              />
+            </View>
+
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#0b1c30', marginBottom: 4 }}>
+              {usuario?.nombre ?? 'Sin nombre'}
+            </Text>
+            <Text style={{ fontSize: 14, color: '#737686', marginBottom: 14 }}>
+              {usuario?.email}
+            </Text>
+
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#065F46' }}>{labelRol(usuario?.rol ?? 'USUARIO')}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#065F46' }}>
+                  {labelRol(usuario?.rol ?? 'USUARIO')}
+                </Text>
               </View>
               <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#166534' }}>Verificado</Text>
@@ -190,30 +264,47 @@ export function PerfilScreen() {
           {/* Stats */}
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
             <View style={{ flex: 1, backgroundColor: '#EAF3DE', borderRadius: 12, padding: 16 }}>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: '#0b1c30' }}>{isLoading ? '—' : total}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: '#0b1c30' }}>
+                {isLoading ? '—' : total}
+              </Text>
               <Text style={{ fontSize: 12, color: '#737686', marginTop: 4 }}>Total reportes</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: '#dcfce7', borderRadius: 12, padding: 16 }}>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: '#0b1c30' }}>{isLoading ? '—' : resueltos}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: '#0b1c30' }}>
+                {isLoading ? '—' : resueltos}
+              </Text>
               <Text style={{ fontSize: 12, color: '#737686', marginTop: 4 }}>Resueltos</Text>
             </View>
           </View>
 
           {/* Mis comunidades */}
           <View style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <View style={{
+              flexDirection: 'row', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: 10,
+            }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0b1c30' }}>Mis comunidades</Text>
-              <TouchableOpacity onPress={() => setModalCP(true)} style={{ backgroundColor: ACCENT, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 }}>
+              <TouchableOpacity
+                onPress={() => setModalCP(true)}
+                style={{ backgroundColor: ACCENT, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 }}
+              >
                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>+ C.P.</Text>
               </TouchableOpacity>
             </View>
+
             {comunidades.length === 0 ? (
               <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: '#9CA3AF', fontSize: 13 }}>Agrega tu código postal para comenzar</Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 13 }}>
+                  Agrega tu código postal para comenzar
+                </Text>
               </View>
             ) : (
               comunidades.map((c) => (
-                <View key={c.id} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: c.esPrincipal ? PRIMARY : '#E5E7EB', flexDirection: 'row', alignItems: 'center' }}>
+                <View key={c.id} style={{
+                  backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,
+                  borderWidth: 1, borderColor: c.esPrincipal ? PRIMARY : '#E5E7EB',
+                  flexDirection: 'row', alignItems: 'center',
+                }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.color, marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -224,8 +315,12 @@ export function PerfilScreen() {
                         </View>
                       )}
                     </View>
-                    <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>C.P. {c.codigoPostal} · {c.colonia}</Text>
-                    <Text style={{ fontSize: 11, color: '#6B7280' }}>IRSU: {c.irsuActual.toFixed(1)}</Text>
+                    <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                      C.P. {c.codigoPostal} · {c.colonia}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#6B7280' }}>
+                      IRSU: {c.irsuActual.toFixed(1)}
+                    </Text>
                   </View>
                   <View style={{ gap: 4, alignItems: 'flex-end' }}>
                     {!c.esPrincipal && (
@@ -265,7 +360,11 @@ export function PerfilScreen() {
                   </View>
                 )}
                 {recientes.map((r: ReporteResumen) => (
-                  <CardReportePerfil key={r.id} reporte={r} onPress={() => router.push(`/(main)/reportes/${r.id}`)} />
+                  <CardReportePerfil
+                    key={r.id}
+                    reporte={r}
+                    onPress={() => router.push(`/(main)/reportes/${r.id}`)}
+                  />
                 ))}
               </>
             )}
@@ -274,24 +373,40 @@ export function PerfilScreen() {
           {/* Logout */}
           <TouchableOpacity
             onPress={handleLogout}
-            style={{ height: 56, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ba1a1a', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            style={{
+              height: 56, backgroundColor: '#fff',
+              borderWidth: 1, borderColor: '#ba1a1a', borderRadius: 12,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
           >
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#ba1a1a' }}>🚪 Cerrar sesión</Text>
           </TouchableOpacity>
 
-          <Text style={{ textAlign: 'center', fontSize: 12, color: '#c3c6d7', marginTop: 16 }}>IRSU App v1.0.0</Text>
+          <Text style={{ textAlign: 'center', fontSize: 12, color: '#c3c6d7', marginTop: 16 }}>
+            IRSU App v1.0.0
+          </Text>
         </View>
       </ScrollView>
 
       {/* Modal C.P. */}
-      <Modal visible={modalCP} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalCP(false)}>
+      <Modal
+        visible={modalCP}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setModalCP(false)}
+      >
         <View style={{ flex: 1, backgroundColor: '#FAFAF9' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 0.5, borderBottomColor: '#E5E7EB' }}>
+          <View style={{
+            flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+            padding: 16, backgroundColor: '#fff',
+            borderBottomWidth: 0.5, borderBottomColor: '#E5E7EB',
+          }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Buscar por C.P.</Text>
             <TouchableOpacity onPress={() => { setModalCP(false); setBusquedaCP(''); setResultadosCP([]); }}>
               <Text style={{ fontSize: 15, color: PRIMARY }}>Cerrar</Text>
             </TouchableOpacity>
           </View>
+
           <View style={{ padding: 16 }}>
             <TextInput
               value={busquedaCP}
@@ -299,17 +414,24 @@ export function PerfilScreen() {
               placeholder="Escribe tu C.P. (ej. 68000)"
               keyboardType="numeric"
               maxLength={5}
-              style={{ backgroundColor: '#fff', borderRadius: 10, borderWidth: 0.5, borderColor: '#E5E7EB', padding: 12, fontSize: 15 }}
+              style={{
+                backgroundColor: '#fff', borderRadius: 10,
+                borderWidth: 0.5, borderColor: '#E5E7EB',
+                padding: 12, fontSize: 15,
+              }}
             />
             {buscando && <ActivityIndicator color={PRIMARY} style={{ marginTop: 16 }} />}
           </View>
+
           <FlatList
             data={resultadosCP}
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={{ paddingHorizontal: 16 }}
             ListEmptyComponent={
               busquedaCP.length >= 3 && !buscando
-                ? <Text style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', marginTop: 20 }}>No se encontraron resultados</Text>
+                ? <Text style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', marginTop: 20 }}>
+                    No se encontraron resultados
+                  </Text>
                 : null
             }
             renderItem={({ item }) => (
@@ -321,12 +443,19 @@ export function PerfilScreen() {
                   }
                   handleAgregarComunidad(item.comunidades[0].id);
                 }}
-                style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 0.5, borderColor: '#E5E7EB' }}
+                style={{
+                  backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,
+                  borderWidth: 0.5, borderColor: '#E5E7EB',
+                }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>{item.colonia}</Text>
-                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>C.P. {item.codigo} · {item.municipio?.nombre}</Text>
+                <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                  C.P. {item.codigo} · {item.municipio?.nombre}
+                </Text>
                 {item.comunidades?.length > 0 ? (
-                  <Text style={{ fontSize: 11, color: '#1D4E32', marginTop: 2 }}>✓ {item.comunidades[0].nombre}</Text>
+                  <Text style={{ fontSize: 11, color: '#1D4E32', marginTop: 2 }}>
+                    ✓ {item.comunidades[0].nombre}
+                  </Text>
                 ) : (
                   <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Sin comunidad activa</Text>
                 )}

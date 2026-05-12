@@ -1,30 +1,27 @@
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '@/src/store/auth.store';
+import { api } from '@/src/lib/axios';
 
-//const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
-// Quita el /api/v1 del final si existe, para construir rutas limpias
 const RAW = process.env.EXPO_PUBLIC_API_URL ?? '';
+// Strips /api/v1 — perfil routes live at /api/perfil, not /api/v1/perfil
 const BASE_URL = RAW.replace(/\/api\/v1\/?$/, '');
-
 
 export function useProfile() {
   const { accessToken, usuario, login } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
-  const authHeader = { Authorization: `Bearer ${accessToken}` };
+  // ─── Perfil ───────────────────────────────────────────────────────────────
 
   const fetchPerfil = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res  = await fetch(`${BASE_URL}/api/perfil/me`, { headers: authHeader });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al cargar perfil');
+      const { data } = await api.get(`${BASE_URL}/api/perfil/me`);
       await login(accessToken!, data);
       return data;
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
     } finally {
       setLoading(false);
     }
@@ -34,64 +31,67 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      const res  = await fetch(`${BASE_URL}/api/perfil/me`, {
-        method:  'PATCH',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ nombre }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al actualizar');
+      const { data } = await api.patch(`${BASE_URL}/api/perfil/me`, { nombre });
       await login(accessToken!, { ...usuario!, nombre });
       return data;
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
     } finally {
       setLoading(false);
     }
   }, [accessToken, usuario]);
+
+  // ─── Avatar ───────────────────────────────────────────────────────────────
 
   const subirAvatar = useCallback(async (uri: string) => {
     setLoading(true);
     setError(null);
     try {
+      const ext  = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mime =
+        ext === 'png'  ? 'image/png'  :
+        ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
       const formData = new FormData();
       formData.append('avatar', {
         uri,
-        name: `avatar-${Date.now()}.jpg`,
-        type: 'image/jpeg',
+        name: `avatar-${Date.now()}.${ext}`,
+        type: mime,
       } as any);
 
-      const res  = await fetch(`${BASE_URL}/api/perfil/me/avatar`, {
-        method:  'POST',
-        headers: authHeader,
-        body:    formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al subir avatar');
-      await login(accessToken!, { ...usuario!, avatarUrl: data.avatarUrl });
-      return data;
+      await api.post(
+        `${BASE_URL}/api/perfil/me/avatar`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      );
+
+      // Re-fetch the full profile from the DB so the UI reflects what was
+      // actually saved — this is the source of truth instead of guessing
+      // the returned avatarUrl and updating the store manually.
+      await fetchPerfil();
     } catch (e: any) {
-      setError(e.message);
+      const msg = e?.response?.data?.error ?? e.message ?? 'Error al subir avatar';
+      setError(msg);
+      throw new Error(msg);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, usuario]);
+  }, [accessToken, fetchPerfil]);
+
+  // ─── Comunidades ──────────────────────────────────────────────────────────
 
   const agregarComunidad = useCallback(async (comunidadId: number) => {
     setLoading(true);
     setError(null);
     try {
-      const res  = await fetch(`${BASE_URL}/api/perfil/me/comunidades`, {
-        method:  'POST',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ comunidadId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al agregar comunidad');
+      const { data } = await api.post(
+        `${BASE_URL}/api/perfil/me/comunidades`,
+        { comunidadId },
+      );
       await fetchPerfil();
       return data;
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
     } finally {
       setLoading(false);
     }
@@ -101,17 +101,10 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${BASE_URL}/api/perfil/me/comunidades/${comunidadId}`, {
-        method:  'DELETE',
-        headers: authHeader,
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? 'Error al eliminar');
-      }
+      await api.delete(`${BASE_URL}/api/perfil/me/comunidades/${comunidadId}`);
       await fetchPerfil();
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
     } finally {
       setLoading(false);
     }
@@ -121,16 +114,13 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      const res  = await fetch(`${BASE_URL}/api/perfil/me/comunidades/${comunidadId}/principal`, {
-        method:  'PATCH',
-        headers: authHeader,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al cambiar principal');
+      const { data } = await api.patch(
+        `${BASE_URL}/api/perfil/me/comunidades/${comunidadId}/principal`,
+      );
       await fetchPerfil();
       return data;
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
     } finally {
       setLoading(false);
     }
@@ -138,15 +128,10 @@ export function useProfile() {
 
   const buscarComunidades = useCallback(async (cp: string) => {
     try {
-      const res  = await fetch(
-        `${BASE_URL}/api/v1/codigos-postales?codigo=${cp}`,
-        { headers: authHeader }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al buscar');
-      return data;
+      const { data } = await api.get('/codigos-postales', { params: { codigo: cp } });
+      return Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
     } catch (e: any) {
-      setError(e.message);
+      setError(e?.response?.data?.error ?? e.message);
       return [];
     }
   }, [accessToken]);
