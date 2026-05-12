@@ -5,6 +5,7 @@ export const ROLES = {
   ADMIN:        'ADMIN',
   COORDINADOR:  'COORDINADOR',
   USUARIO:      'USUARIO',
+  OPERADOR:     'OPERADOR',
 } as const;
 
 export const CATEGORIAS = {

@@ -3,7 +3,8 @@ import { Redirect } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '@/src/store/auth.store';
 
-const ROLES_ADMIN = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'];
+const ROLES_ADMIN     = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'];
+const ROLES_OPERADOR  = ['OPERADOR'];
 
 export default function Index() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -20,7 +21,12 @@ export default function Index() {
 
   if (!isAuthenticated) return <Redirect href="/auth/login" />;
 
-  // Admins van directo al panel
+  // Operadores de cuadrilla van directo a su pantalla
+  if (usuario && ROLES_OPERADOR.includes(usuario.rol)) {
+    return <Redirect href="/(main)/cuadrillas" />;
+  }
+
+  // Admins y coordinadores van al panel
   if (usuario && ROLES_ADMIN.includes(usuario.rol)) {
     return <Redirect href="/(main)/admin" />;
   }

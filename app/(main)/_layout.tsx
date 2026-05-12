@@ -3,11 +3,12 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/auth.store';
 
-const ROLES_ADMIN = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
-const ROLES_CUADRILLA = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
+const ROLES_ADMIN     = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR'] as const;
+const ROLES_CUADRILLA = ['SUPER_ADMIN', 'ADMIN', 'COORDINADOR', 'OPERADOR'] as const;
 
 export default function MainLayout() {
   const usuario = useAuthStore((s) => s.usuario);
+
   const esAdmin = usuario
     ? ROLES_ADMIN.includes(usuario.rol as typeof ROLES_ADMIN[number])
     : false;
@@ -15,6 +16,9 @@ export default function MainLayout() {
   const puedeCuadrillas = usuario
     ? ROLES_CUADRILLA.includes(usuario.rol as typeof ROLES_CUADRILLA[number])
     : false;
+
+  // Los OPERADOR solo ven la pestaña de cuadrillas
+  const esOperador = usuario?.rol === 'OPERADOR';
 
   const tabBarStyle = Platform.OS === 'web' ? { display: 'none' as const } : undefined;
 
@@ -26,10 +30,12 @@ export default function MainLayout() {
         tabBarStyle,
       }}
     >
+      {/* Tabs que OPERADOR no ve */}
       <Tabs.Screen
         name="reportes/index"
         options={{
           title: 'Reportes',
+          href: esOperador ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text-outline" size={size} color={color} />
           ),
@@ -39,6 +45,7 @@ export default function MainLayout() {
         name="comunidades/index"
         options={{
           title: 'Comunidades',
+          href: esOperador ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),
@@ -48,6 +55,7 @@ export default function MainLayout() {
         name="alertas/index"
         options={{
           title: 'Alertas',
+          href: esOperador ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),
@@ -57,6 +65,7 @@ export default function MainLayout() {
         name="perfil/index"
         options={{
           title: 'Perfil',
+          href: esOperador ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
@@ -66,12 +75,14 @@ export default function MainLayout() {
         name="admin/index"
         options={{
           title: 'Admin',
-          href: esAdmin ? undefined : null,
+          href: esAdmin && !esOperador ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="shield-outline" size={size} color={color} />
           ),
         }}
       />
+
+      {/* Cuadrillas — visible solo para roles con acceso */}
       <Tabs.Screen
         name="cuadrillas/index"
         options={{
@@ -82,10 +93,12 @@ export default function MainLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="ranking/index"
         options={{
           title: 'Ranking',
+          href: esOperador ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="trophy-outline" size={size} color={color} />
           ),
