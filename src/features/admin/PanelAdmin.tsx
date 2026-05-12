@@ -80,10 +80,10 @@ type NavItem = {
 
 const NAV: NavItem[] = [
 	{ key: "dashboard",   label: "Dashboard",    icon: "dashboard"       },
-	{ key: "reportes",    label: "Reportes",     icon: "assessment",     badge: { n: 12, color: C.amberText, bg: C.amber } },
+	{ key: "reportes",    label: "Reportes",     icon: "assessment"     },
 	{ key: "comunidades", label: "Comunidades",  icon: "groups"          },
 	{ key: "cuadrillas",  label: "Cuadrillas",   icon: "engineering"     },
-	{ key: "alertas",     label: "Alertas",      icon: "notifications",  badge: { n: 3, color: C.rojoText, bg: C.rojo } },
+	{ key: "alertas",     label: "Alertas",      icon: "notifications"  },
 	{ key: "usuarios",    label: "Usuarios",     icon: "manage-accounts" },
 ];
 
